@@ -1,5 +1,5 @@
 {
-  "name": "testdemo2",
+  "name": "foodsave",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -19,6 +19,7 @@
     "fuse.js": "^7.1.0",
     "mongoose": "^8.17.0",
     "nanoid": "^5.1.5",
+    "pinia": "^3.0.3",
     "scss": "^0.2.4",
     "vant": "^4.9.21",
     "vue": "^3.5.17",

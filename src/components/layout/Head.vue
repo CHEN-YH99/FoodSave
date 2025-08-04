@@ -162,7 +162,7 @@ const loadFoodData = async () => {
   try {
     // console.log('🔗 正在从MongoDB加载食材数据...');
     const response = await axios.get('http://localhost:3001/api/food');
-    console.log(response.data);
+    // console.log(response.data);
 
     if (response.data && response.data.length > 0) {
       // console.log(`✅ 成功从MongoDB加载 ${response.data.length} 条食材数据`);

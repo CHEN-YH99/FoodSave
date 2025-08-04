@@ -36,6 +36,12 @@ const routes = [
     // component: mine,
     component: () => import('@/pages/Mine.vue'),
     meta:{title:'我的'}
+  },
+  {
+    path: '/food-detail/:categoryId',
+    name: 'FoodCardDetail',
+    component: () => import('@/components/foot/FoodCardDetail.vue'),
+    meta:{title:'食品分类详情'}
   }
 ]
 
