@@ -86,6 +86,11 @@ const filteredFoods = computed(() => {
 
     const matchCategories = categoryMap[categoryName] || [categoryName]
     return matchCategories.some(cat => food.category === cat)
+  }).sort((a, b) => {
+    // 按过期时间排序：过期时间越早的排在前面
+    const daysA = store.calculateExpiryDays(a.expireDate)
+    const daysB = store.calculateExpiryDays(b.expireDate)
+    return daysA - daysB
   })
 })
 
