@@ -38,10 +38,26 @@ const routes = [
     meta:{title:'我的'}
   },
   {
-    path: '/food-detail/:categoryId',
-    name: 'FoodCardDetail',
+    path: '/food-detail/:id',
+    name: 'FoodDetail',
     component: () => import('@/components/foot/FoodCardDetail.vue'),
-    meta:{title:'食品分类详情'}
+    meta:{
+      title:'食品详情',
+      hideHeader: true,
+      hideTabBar: true
+    },
+    props: true
+  },
+  {
+    path: '/category/:categoryId',
+    name: 'CategoryDetail',
+    component: () => import('@/components/foot/FoodCardDetail.vue'),
+    meta:{
+      title:'分类详情',
+      hideHeader: true,
+      hideTabBar: true
+    },
+    props: true
   }
 ]
 

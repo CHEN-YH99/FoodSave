@@ -1,3 +1,4 @@
+
 <template>
   <div class="index-page">
     <!-- 食品状态栏 -->
@@ -39,7 +40,7 @@
         </div>
       </div>
 
-      <div class="recommend-card" @click="handleRecommendClick">
+      <div class="recommend-card" @click="() => handleRecommendClick(router)">
         <div class="card-left">
           <div class="ingredient-section">
             <van-image width="70" height="70" :src="store.recommendData.ingredient.image" fit="cover" round
@@ -87,7 +88,7 @@
 
         <div class="recently-list">
           <van-cell-group :border="false">
-            <van-cell v-for="item in store.recentlyAdded" :key="item.id" @click="handleRecentItemClick(item)" clickable
+            <van-cell v-for="item in store.recentlyAdded" :key="item.id" @click="() => handleRecentItemClick(item, router)" clickable
               class="recent-item">
               <template #icon>
                 <van-image :src="item.image" width="50" height="50" fit="cover" round class="item-image" />
@@ -119,6 +120,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
+import TabBar from '../components/layout/TabBar.vue'
 
 // 使用router和store
 const router = useRouter()
