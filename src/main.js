@@ -5,7 +5,7 @@ import App from './App.vue'
 import router from './router' //导入路由
 import 'vant/lib/index.css' //导入vant4样式
 import './assets/style/global.css' //导入全局样式
-import { PullRefresh, Search, Icon, Tabbar, TabbarItem, Tab, Button, Grid, GridItem, Cell, CellGroup, Image as VanImage, Empty, Popup, Loading, Toast, NavBar, NoticeBar, Dialog, SwipeCell } from 'vant'//导入vant组件库
+import { PullRefresh, Search, Icon, Tabbar, TabbarItem, Tab, Button, Grid, GridItem, Cell, CellGroup, Image as VanImage, Empty, Popup, Loading, Toast, NavBar, NoticeBar, Dialog, SwipeCell,DropdownMenu, DropdownItem } from 'vant'//导入vant组件库
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -33,4 +33,6 @@ app.use(NavBar)
 app.use(NoticeBar)
 app.use(Dialog)
 app.use(SwipeCell)
+app.use(DropdownMenu)
+app.use(DropdownItem)
 app.mount('#app')

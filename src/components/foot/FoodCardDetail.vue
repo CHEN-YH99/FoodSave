@@ -83,6 +83,13 @@
           <div class="popup-header">
             <h3>最近取出 (7天内)</h3>
             <div class="header-actions">
+              <van-dropdown-menu>
+                <van-dropdown-item v-model="sortOrder" :options="sortOptions" @change="handleSortChange">
+                  <template #title>
+                    <van-icon name="sort" size="16" />
+                  </template>
+                </van-dropdown-item>
+              </van-dropdown-menu>
               <van-button size="small" type="danger" plain @click="handleClearAllTakenOut"
                 v-if="store.takenOutFoods.length > 0">
                 清空
@@ -91,8 +98,8 @@
             </div>
           </div>
 
-          <div class="taken-out-list" v-if="store.takenOutFoods.length > 0">
-            <div v-for="item in store.takenOutFoods" :key="`taken_${item.id}_${item.takenOutDate}`"
+          <div class="taken-out-list" v-if="sortedTakenOutFoods.length > 0">
+            <div v-for="item in sortedTakenOutFoods" :key="`taken_${item.id}_${item.takenOutDate}`"
               class="taken-out-item">
               <van-image :src="item.image" width="40" height="40" fit="cover" round class="taken-item-image" />
               <div class="taken-item-info">
@@ -174,6 +181,13 @@ const showTakenOut = ref(false)
 
 // 取出操作的加载状态
 const takingOutIds = ref(new Set())
+
+// 排序选项
+const sortOrder = ref('desc') // 'desc' 降序（最新在前），'asc' 升序（最早在前）
+const sortOptions = [
+  { text: '时间降序（最新在前）', value: 'desc' },
+  { text: '时间升序（最早在前）', value: 'asc' }
+]
 
 // 判断是分类模式还是单个食品详情模式
 const isCategoryMode = computed(() => {
@@ -299,6 +313,27 @@ const showTakenOutList = () => {
 // 清空所有已取出记录
 const handleClearAllTakenOut = () => {
   store.clearAllTakenOutFoods()
+}
+
+// 排序后的已取出食品列表
+const sortedTakenOutFoods = computed(() => {
+  const foods = [...store.takenOutFoods]
+
+  return foods.sort((a, b) => {
+    const dateA = new Date(a.takenOutDate)
+    const dateB = new Date(b.takenOutDate)
+
+    if (sortOrder.value === 'desc') {
+      return dateB - dateA // 降序：最新在前
+    } else {
+      return dateA - dateB // 升序：最早在前
+    }
+  })
+})
+
+// 处理排序选择
+const handleSortChange = (value) => {
+  sortOrder.value = value
 }
 
 
@@ -680,6 +715,33 @@ onMounted(async () => {
       display: flex;
       align-items: center;
       gap: 12px;
+
+      .van-dropdown-menu {
+        :deep(.van-dropdown-menu__bar) {
+          background: transparent;
+          box-shadow: none;
+          height: auto;
+          padding: 0;
+        }
+
+        :deep(.van-dropdown-menu__item) {
+          padding: 4px 8px;
+          border-radius: 6px;
+          transition: background-color 0.2s;
+
+          &:hover {
+            background-color: #f2f3f5;
+          }
+        }
+
+        :deep(.van-dropdown-menu__title) {
+          color: #666;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+      }
 
       .van-icon {
         cursor: pointer;
