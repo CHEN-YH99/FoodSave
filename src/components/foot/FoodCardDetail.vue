@@ -46,7 +46,9 @@
       <div class="food-list">
         <div class="list-header">
           <h3>食品列表</h3>
-          <span class="count">共{{ filteredFoods.length }}项</span>
+          <span class="count">
+            {{ showAllFoods ? `共${allFoods.length}项` : `显示${filteredFoods.length}/${allFoods.length}项` }}
+          </span>
         </div>
 
         <div class="food-items" v-if="filteredFoods.length > 0">
@@ -70,6 +72,19 @@
                 :disabled="takingOutIds.has(food._id || food.id)" />
             </template>
           </van-swipe-cell>
+        </div>
+
+        <!-- 查看更多/收起按钮 -->
+        <div class="load-more-section" v-if="allFoods.length > 0">
+          <van-button v-if="shouldShowLoadMore" type="primary" plain size="small" @click="handleLoadMore"
+            class="load-more-btn">
+            查看更多
+          </van-button>
+
+          <van-button v-else-if="showAllFoods && allFoods.length > pageSize" type="default" plain size="small"
+            @click="handleCollapse" class="collapse-btn">
+            收起
+          </van-button>
         </div>
 
         <div class="empty-state" v-else>
@@ -134,40 +149,56 @@
 
       <!-- 食品详情内容 -->
       <div class="food-detail-content">
-        <div class="food-image-section">
-          <van-image :src="foodDetail.image" width="120" height="120" fit="cover" round class="detail-image" />
+        <!-- 加载状态 -->
+        <div v-if="store.loading" class="loading-section">
+          <van-loading size="24px" vertical>加载中...</van-loading>
         </div>
 
-        <div class="food-info-section">
-          <h2 class="food-name">{{ foodDetail.name }}</h2>
-          <div class="food-meta">
-            <div class="meta-item">
-              <span class="label">分类：</span>
-              <span class="value">{{ foodDetail.category }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="label">存储位置：</span>
-              <span class="value">{{ foodDetail.storageLocation }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="label">过期时间：</span>
-              <span class="value" :style="{ color: store.getExpiryColor(foodDetail.expiryDays) }">
-                {{ foodDetail.expireDate }}
-                ({{ foodDetail.expiryDays <= 0 ? '已过期' : `${foodDetail.expiryDays}天后过期` }}) </span>
-            </div>
-            <div class="meta-item">
-              <span class="label">添加时间：</span>
-              <span class="value">{{ foodDetail.createdAt }}</span>
+        <!-- 食品详情 -->
+        <template v-else>
+          <div class="food-image-section">
+            <van-image :src="foodDetail.image" width="120" height="120" fit="cover" round class="detail-image" />
+          </div>
+
+          <div class="food-info-section">
+            <h2 class="food-name">{{ foodDetail.name }}</h2>
+            <div class="food-meta">
+              <div class="meta-item">
+                <span class="label">分类：</span>
+                <span class="value">{{ foodDetail.category }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="label">存储位置：</span>
+                <span class="value">{{ foodDetail.storageLocation }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="label">过期时间：</span>
+                <span class="value" :style="{ color: store.getExpiryColor(foodDetail.expiryDays) }">
+                  {{ foodDetail.expireDate }}
+                  ({{ foodDetail.expiryDays <= 0 ? '已过期' : `${foodDetail.expiryDays}天后过期` }}) </span>
+              </div>
+              <div class="meta-item">
+                <span class="label">添加时间：</span>
+                <span class="value">{{ foodDetail.createdAt }}</span>
+              </div>
+              <div class="meta-item" v-if="foodDetail.updatedAt && foodDetail.updatedAt !== foodDetail.createdAt">
+                <span class="label">更新时间：</span>
+                <span class="value">{{ foodDetail.updatedAt }}</span>
+              </div>
+              <div class="meta-item" v-if="foodDetail.description">
+                <span class="label">描述：</span>
+                <span class="value">{{ foodDetail.description }}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
 import { showToast } from 'vant'
@@ -188,6 +219,11 @@ const sortOptions = [
   { text: '时间降序（最新在前）', value: 'desc' },
   { text: '时间升序（最早在前）', value: 'asc' }
 ]
+
+// 分页相关状态
+const pageSize = ref(10) // 每页显示数量
+const currentPage = ref(1) // 当前页码
+const showAllFoods = ref(false) // 是否显示所有食品
 
 // 判断是分类模式还是单个食品详情模式
 const isCategoryMode = computed(() => {
@@ -216,8 +252,8 @@ const foodDetail = ref({
   expiryDays: 0
 })
 
-// 获取该分类下的食品列表（仅在分类模式下使用）
-const filteredFoods = computed(() => {
+// 获取该分类下的所有食品列表（仅在分类模式下使用）
+const allFoods = computed(() => {
   if (!isCategoryMode.value) return []
   const foods = store.getFoodsByCategory(categoryInfo.value.id)
 
@@ -244,6 +280,24 @@ const filteredFoods = computed(() => {
   })
 })
 
+// 当前显示的食品列表（分页后的）
+const filteredFoods = computed(() => {
+  if (!isCategoryMode.value) return []
+
+  // 如果显示所有食品，返回全部
+  if (showAllFoods.value) {
+    return allFoods.value
+  }
+
+  // 否则只返回前10条
+  return allFoods.value.slice(0, pageSize.value)
+})
+
+// 是否需要显示"查看更多"按钮
+const shouldShowLoadMore = computed(() => {
+  return !showAllFoods.value && allFoods.value.length > pageSize.value
+})
+
 // 获取分类描述
 const getCategoryDescription = (categoryName) => {
   return store.getCategoryDescription(categoryName)
@@ -266,19 +320,11 @@ const handleMore = () => {
 
 // 点击食品项（在分类模式下）
 const handleFoodClick = (food) => {
-  // 将食品数据存储到缓存中
-  const cacheKey = `food_${food.id}`
-  store.setRouteData(cacheKey, {
-    id: food.id,
-    name: food.name,
-    category: food.category || categoryInfo.value.name,
-    expireDate: food.expireDate,
-    storageLocation: food.storageLocation || '冰箱',
-    createdAt: food.createdAt || food.addedDate || new Date().toISOString().split('T')[0],
-    synonyms: food.synonyms || []
-  })
+  console.log('点击食品:', food.name, 'ID:', food.id)
+  console.log('完整食品数据:', food)
 
-  // 跳转到单个食品的详情页，只传递ID参数
+  // 直接跳转到食品详情页，只传递ID参数
+  // 不再使用缓存，而是在详情页实时获取最新数据
   router.push({
     name: 'FoodDetail',
     params: { id: food.id }
@@ -336,6 +382,16 @@ const handleSortChange = (value) => {
   sortOrder.value = value
 }
 
+// 查看更多食品
+const handleLoadMore = () => {
+  showAllFoods.value = true
+}
+
+// 收起食品列表
+const handleCollapse = () => {
+  showAllFoods.value = false
+}
+
 
 
 // 从缓存加载分类数据
@@ -353,28 +409,59 @@ const loadCategoryData = () => {
         categoryInfo.value = { ...category }
       }
     }
+
+    // 重置分页状态
+    showAllFoods.value = false
+    currentPage.value = 1
   }
 }
 
-// 从缓存加载食品详情数据
-const loadFoodData = () => {
+// 从数据库实时加载食品详情数据
+const loadFoodData = async () => {
+  console.log('=== loadFoodData 开始执行 ===')
+  console.log('isCategoryMode:', isCategoryMode.value)
+
   if (!isCategoryMode.value) {
-    const cacheKey = `food_${route.params.id}`
-    const cachedData = store.getRouteData(cacheKey)
+    const foodId = route.params.id
+    console.log(`准备加载食品详情，ID: ${foodId}`)
 
-    if (cachedData) {
-      foodDetail.value = { ...cachedData }
+    try {
+      console.log(`开始加载食品详情，ID: ${foodId}`)
 
-      // 计算过期天数
-      if (foodDetail.value.expireDate) {
-        foodDetail.value.expiryDays = store.calculateExpiryDays(foodDetail.value.expireDate)
+      // 显示加载状态
+      store.loading = true
+      console.log('设置loading状态为true')
+
+      // 从数据库实时获取食品详情
+      console.log('调用 store.getFoodById...')
+      const foodData = await store.getFoodById(foodId)
+      console.log('getFoodById 返回结果:', foodData)
+
+      if (foodData) {
+        foodDetail.value = { ...foodData }
+        console.log(`食品详情加载成功: ${foodData.name}`)
+        console.log('更新后的 foodDetail.value:', foodDetail.value)
+      } else {
+        console.log('getFoodById 返回null，食品不存在')
+        // 如果数据库中没有找到，显示错误信息
+        showToast({
+          message: '食品不存在或已被删除',
+          type: 'fail'
+        })
+
+        // 返回上一页
+        setTimeout(() => {
+          router.back()
+        }, 1500)
       }
+    } catch (error) {
+      console.error('加载食品详情失败:', error)
 
-      // 获取食品图片
-      foodDetail.value.image = store.getItemImage(foodDetail.value.name, foodDetail.value.category)
-    } else {
-      // 如果缓存中没有数据，尝试从store的foodData中查找
-      const food = store.foodData.find(item => (item._id || item.id) == route.params.id)
+      // 如果获取失败，尝试从本地缓存获取（作为备选方案）
+      console.log('尝试从本地缓存获取数据...')
+      const food = store.foodData.find(item => (item._id || item.id) == foodId)
+      console.log('本地缓存中找到的食品:', food)
+
       if (food) {
         foodDetail.value = {
           id: food._id || food.id,
@@ -387,26 +474,63 @@ const loadFoodData = () => {
           image: store.getItemImage(food.name, food.category),
           expiryDays: store.calculateExpiryDays(food.expireDate)
         }
+
+        console.log('使用本地缓存数据:', foodDetail.value)
+        showToast({
+          message: '使用本地缓存数据，可能不是最新信息',
+          type: 'warning'
+        })
+      } else {
+        console.log('本地缓存中也没有找到该食品')
+        showToast({
+          message: '无法加载食品详情',
+          type: 'fail'
+        })
+
+        setTimeout(() => {
+          router.back()
+        }, 1500)
       }
+    } finally {
+      store.loading = false
+      console.log('设置loading状态为false')
     }
+  } else {
+    console.log('当前为分类模式，跳过食品详情加载')
   }
 }
 
 // 初始化数据
-const initData = () => {
+const initData = async () => {
   loadCategoryData()
-  loadFoodData()
+  await loadFoodData()
 }
+
+// 监听路由参数变化
+watch(() => route.params, async (newParams, oldParams) => {
+  console.log('=== 路由参数变化 ===')
+  console.log('旧参数:', oldParams)
+  console.log('新参数:', newParams)
+
+  if (newParams.id !== oldParams?.id) {
+    console.log('食品ID发生变化，重新加载数据')
+    await initData()
+  }
+}, { immediate: false })
 
 // 页面挂载时加载数据
 onMounted(async () => {
+  console.log('=== FoodCardDetail 组件挂载 ===')
+  console.log('当前路由:', route.name, route.params)
+  console.log('是否为分类模式:', isCategoryMode.value)
+
   // 如果store中没有数据，先加载数据
   if (store.foodData.length === 0) {
     await store.loadFoodData()
   }
 
   // 初始化数据
-  initData()
+  await initData()
 
   // 调试：如果是分类模式，打印调试信息
   if (isCategoryMode.value) {
@@ -415,6 +539,9 @@ onMounted(async () => {
 
     // 调试分类匹配情况
     store.debugCategoryFoods(categoryInfo.value.id)
+  } else {
+    console.log('当前为食品详情模式，食品ID:', route.params.id)
+    console.log('食品详情数据:', foodDetail.value)
   }
 })
 </script>
@@ -635,6 +762,50 @@ onMounted(async () => {
     }
   }
 
+  .load-more-section {
+    padding: 16px 20px;
+    text-align: center;
+    border-top: 1px solid #f8f9fa;
+
+    .load-more-btn,
+    .collapse-btn {
+      width: 100%;
+      height: 40px;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
+
+    .load-more-btn {
+      background: linear-gradient(135deg, #c7f3cf 0%, #9ff18f 100%);
+      border: none;
+      color: rgb(0, 0, 0);
+
+      &:hover {
+        background: linear-gradient(45deg, #9ff18f 0%, #c7f3cf 100%);
+      }
+    }
+
+    .collapse-btn {
+      background: linear-gradient(45deg, #9ff18f 0%, #c7f3cf 100%);
+      color: #666;
+
+      &:hover {
+        background: linear-gradient(135deg, #c7f3cf 0%, #9ff18f 100%);
+        color: #333;
+      }
+    }
+  }
+
   .empty-state {
     padding: 40px 20px;
     text-align: center;
@@ -815,6 +986,18 @@ onMounted(async () => {
 // 单个食品详情样式
 .food-detail-content {
   margin: 20px;
+
+  .loading-section {
+    background: white;
+    border-radius: 12px;
+    padding: 60px 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    .van-loading {
+      color: #1890ff;
+    }
+  }
 
   .food-image-section {
     background: white;

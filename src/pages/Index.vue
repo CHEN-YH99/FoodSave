@@ -1,4 +1,3 @@
-
 <template>
   <div class="index-page">
     <!-- 食品状态栏 -->
@@ -19,16 +18,40 @@
 
     <!-- 食品分类栏 -->
     <div class="food-classification commonstyle">
-      <van-grid :column-num="3" :gutter="10" :border="false">
-        <van-grid-item v-for="item in store.foodCategories" :key="item.id" @click="() => handleCategoryClick(item, router)">
-          <div class="category-item">
-            <div class="icon-wrapper" :style="{ backgroundColor: item.bgColor }">
-              <van-icon :name="item.icon" :color="item.iconColor" size="25" />
+      <div class="classification-header">
+        <div class="header-left">
+          <van-icon name="apps-o" color="#2c3e50" size="20" />
+          <span class="classification-title">食品分类</span>
+        </div>
+        <div v-if="store.shouldShowMoreButton" class="toggle-button" @click="store.toggleCategoriesExpansion">
+          <span class="toggle-text">
+            {{ store.showAllCategories ? '收起' : '更多' }}
+          </span>
+          <van-icon :name="store.showAllCategories ? 'arrow-up' : 'arrow-down'"
+            :class="['toggle-icon', { 'rotated': store.showAllCategories }]" size="14" color="#666" />
+        </div>
+      </div>
+
+      <div class="categories-container" ref="categoriesContainer">
+        <div class="categories-grid" :class="{ 'expanded': store.showAllCategories }" ref="categoriesGrid">
+          <transition-group name="category-item" tag="div" class="categories-inner">
+            <div v-for="(item, index) in store.foodCategories" :key="item.id" class="category-grid-item" :class="{
+              'hidden': !store.showAllCategories && index >= store.maxVisibleCategories,
+              'visible': store.showAllCategories || index < store.maxVisibleCategories
+            }" :style="{
+                '--delay': `${index * 0.05}s`,
+                '--index': index
+              }" @click="() => handleCategoryClick(item, router)">
+              <div class="category-item">
+                <div class="icon-wrapper" :style="{ backgroundColor: item.bgColor }">
+                  <van-icon :name="item.icon" :color="item.iconColor" size="25" />
+                </div>
+                <span class="category-text">{{ item.name }}</span>
+              </div>
             </div>
-            <span class="category-text">{{ item.name }}</span>
-          </div>
-        </van-grid-item>
-      </van-grid>
+          </transition-group>
+        </div>
+      </div>
     </div>
 
     <!-- 智能推荐 -->
@@ -62,14 +85,8 @@
 
           <div class="card-right">
             <div class="recipe-section">
-              <van-image  
-                width="60" 
-                height="60" 
-                :src="store.recommendData.recipe.image" 
-                fit="cover" 
-                round
-                class="recipe-img" 
-              />
+              <van-image width="60" height="60" :src="store.recommendData.recipe.image" fit="cover" round
+                class="recipe-img" />
               <div class="recipe-name">{{ store.recommendData.recipe.name }}</div>
             </div>
             <van-icon name="arrow" color="#c8c9cc" size="16" class="more-icon" />
@@ -88,8 +105,8 @@
 
         <div class="recently-list">
           <van-cell-group :border="false">
-            <van-cell v-for="item in store.recentlyAdded" :key="item.id" @click="() => handleRecentItemClick(item, router)" clickable
-              class="recent-item">
+            <van-cell v-for="item in store.recentlyAdded" :key="item.id"
+              @click="() => handleRecentItemClick(item, router)" clickable class="recent-item">
               <template #icon>
                 <van-image :src="item.image" width="50" height="50" fit="cover" round class="item-image" />
               </template>
@@ -117,7 +134,7 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
 import TabBar from '../components/layout/TabBar.vue'
@@ -125,6 +142,10 @@ import TabBar from '../components/layout/TabBar.vue'
 // 使用router和store
 const router = useRouter()
 const store = useIndexStore()
+
+// 模板引用
+const categoriesContainer = ref(null)
+const categoriesGrid = ref(null)
 
 // 从store中解构所需的方法
 const {
@@ -143,6 +164,8 @@ const {
   handleExpiryWarningClick,
   handleLowStockClick
 } = store
+
+
 
 // 页面挂载时加载数据
 onMounted(() => {
@@ -228,16 +251,120 @@ onMounted(() => {
 
 // 食品分类
 .food-classification {
-  .van-grid-item {
-    :deep(.van-grid-item__content) {
-      border-radius: 15px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  .classification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 0 4px;
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .classification-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+    }
+
+    .toggle-button {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border: 1px solid #dee2e6;
       cursor: pointer;
-      position: relative;
-      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+
+      &:hover {
+        background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      &:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+
+      .toggle-text {
+        font-size: 13px;
+        color: #666;
+        font-weight: 500;
+      }
+
+      .toggle-icon {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        &.rotated {
+          transform: rotate(180deg);
+        }
+      }
+    }
+  }
+
+  .categories-container {
+    overflow: hidden;
+    position: relative;
+    transition: height 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .categories-grid {
+    .categories-inner {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  }
+
+  .category-grid-item {
+    transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    will-change: transform, opacity, max-height;
+    overflow: hidden;
+
+    &.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      max-height: 200px;
+      /* 足够容纳一个分类项的高度 */
+      margin-bottom: 12px;
+      pointer-events: auto;
+    }
+
+    &.hidden {
+      opacity: 0;
+      transform: translateY(-20px) scale(0.9);
+      max-height: 0;
+      margin-bottom: 0;
+      pointer-events: none;
+      transition-delay: calc(0.05s * (var(--index) - 6));
+    }
+
+    // 展开时的延迟动画
+    &.visible:nth-child(n+7) {
+      transition-delay: calc(0.1s + 0.05s * (var(--index) - 6));
+    }
+
+    .category-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 8px;
+      border-radius: 16px;
       background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
       border: 1px solid #e9ecef;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
 
       &::before {
         content: '';
@@ -253,11 +380,27 @@ onMounted(() => {
       &:hover {
         transform: translateY(-4px) scale(1.02);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-        // border-color:  rgb(0, 150, 5);
         background: linear-gradient(135deg, #ffffff 0%, rgba(0, 150, 5, 0.1) 100%);
+        border-color: rgba(0, 150, 5, 0.3);
 
         &::before {
           left: 100%;
+        }
+
+        .icon-wrapper {
+          transform: scale(1.1) rotate(5deg);
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+
+          &::after {
+            width: 60px;
+            height: 60px;
+          }
+        }
+
+        .category-text {
+          color: #21a946;
+          font-weight: 600;
+          transform: translateY(-2px);
         }
       }
 
@@ -265,86 +408,95 @@ onMounted(() => {
         transform: translateY(-2px) scale(1.01);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
         transition: all 0.1s ease;
+
+        .icon-wrapper {
+          transform: scale(1.05) rotate(2deg);
+        }
+
+        .category-text {
+          transform: translateY(0);
+        }
       }
 
-      &:focus-visible {
-        outline: 2px solid #007bff;
-        outline-offset: 2px;
-      }
-    }
-  }
-
-  .category-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 12px 8px;
-    transition: all 0.3s ease;
-    position: relative;
-    z-index: 1;
-
-    .icon-wrapper {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 8px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-
-      &::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.3);
-        transform: translate(-50%, -50%);
-        transition: all 0.3s ease;
-      }
-    }
-
-    .category-text {
-      font-size: 14px;
-      color: #333;
-      font-weight: 500;
-      transition: all 0.3s ease;
-      text-align: center;
-    }
-
-    // 悬停效果
-    &:hover {
       .icon-wrapper {
-        transform: scale(1.1) rotate(5deg);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
 
         &::after {
-          width: 60px;
-          height: 60px;
+          content: '';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 0;
+          height: 0;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.3);
+          transform: translate(-50%, -50%);
+          transition: all 0.3s ease;
         }
       }
 
       .category-text {
-        color: #21a946;
-        font-weight: 600;
-        transform: translateY(-2px);
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-align: center;
+        line-height: 1.2;
       }
     }
+  }
+}
 
-    // 点击效果
-    &:active {
-      .icon-wrapper {
-        transform: scale(1.05) rotate(2deg);
-      }
+// 分类展开动画
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
 
-      .category-text {
-        transform: translateY(0);
-      }
-    }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// 分类项过渡动画
+.category-item-enter-active,
+.category-item-leave-active {
+  transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.category-item-enter-from {
+  opacity: 0;
+  transform: translateY(30px) scale(0.8);
+  max-height: 0;
+}
+
+.category-item-leave-to {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.9);
+  max-height: 0;
+}
+
+.category-item-move {
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+// 容器高度自适应动画
+.categories-container {
+  &::after {
+    content: '';
+    display: block;
+    height: 0;
+    transition: height 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 }
 

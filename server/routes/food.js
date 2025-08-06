@@ -88,6 +88,28 @@ router.get('/suggestions', async (req, res) => {
   }
 });
 
+// 根据ID获取单个食材
+router.get('/:id', async (req, res) => {
+  try {
+    console.log(`📋 正在获取食材ID: ${req.params.id}`);
+    const food = await Food.findById(req.params.id);
+    
+    if (!food) {
+      console.log(`⚠️ 未找到食材ID: ${req.params.id}`);
+      return res.status(404).json({ message: '食材不存在' });
+    }
+    
+    console.log(`✅ 成功获取食材: ${food.name}`);
+    res.json(food);
+  } catch (error) {
+    console.error('❌ 获取单个食材失败:', error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: '无效的食材ID格式' });
+    }
+    res.status(500).json({ message: '获取食材失败', error: error.message });
+  }
+});
+
 // 添加新食材
 router.post('/', async (req, res) => {
   try {

@@ -23,7 +23,7 @@ function loadTakenOutFoodsFromStorage() {
       // 清理7天前的记录
       const sevenDaysAgo = new Date()
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-      
+
       return data.filter(item => {
         const itemDate = new Date(item.takenOutDate)
         return itemDate >= sevenDaysAgo
@@ -53,6 +53,10 @@ export const useIndexStore = defineStore('index', () => {
   // 路由数据缓存 - 用于安全传递数据，避免敏感信息暴露在URL中
   const routeDataCache = ref(new Map())
 
+  // 分类展开/收起状态
+  const showAllCategories = ref(false)
+  const maxVisibleCategories = 6 // 最多显示6个分类
+
   // 已取出食材列表 - 保留最近7天的记录，从localStorage中恢复数据
   const takenOutFoods = ref(loadTakenOutFoodsFromStorage())
 
@@ -60,12 +64,12 @@ export const useIndexStore = defineStore('index', () => {
   const initializeTakenOutFoods = () => {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    
+
     const filteredData = takenOutFoods.value.filter(item => {
       const itemDate = new Date(item.takenOutDate)
       return itemDate >= sevenDaysAgo
     })
-    
+
     if (filteredData.length !== takenOutFoods.value.length) {
       takenOutFoods.value = filteredData
       saveTakenOutFoodsToStorage(takenOutFoods.value)
@@ -89,13 +93,13 @@ export const useIndexStore = defineStore('index', () => {
   const cleanExpiredTakenOutFoods = () => {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    
+
     const originalLength = takenOutFoods.value.length
     takenOutFoods.value = takenOutFoods.value.filter(item => {
       const itemDate = new Date(item.takenOutDate)
       return itemDate >= sevenDaysAgo
     })
-    
+
     // 如果有记录被清理，更新localStorage
     if (takenOutFoods.value.length !== originalLength) {
       saveTakenOutFoods()
@@ -132,7 +136,7 @@ export const useIndexStore = defineStore('index', () => {
     },
     {
       id: 3,
-      name: '乳制品',
+      name: '饮品',
       icon: 'newspaper-o',
       bgColor: '#fff7e6',
       iconColor: '#fa8c16'
@@ -157,6 +161,20 @@ export const useIndexStore = defineStore('index', () => {
       icon: 'desktop-o',
       bgColor: '#EBD6D6',
       iconColor: '#B87070'
+    },
+    {
+      id: 7,
+      name: '海鲜',
+      icon: 'fire-o',
+      bgColor: '#E6F4FF',
+      iconColor: '#1677FF'
+    },
+    {
+      id: 8,
+      name: '熟食',
+      icon: 'hot-o',
+      bgColor: '#FFF2E8',
+      iconColor: '#FA8C16'
     }
   ])
 
@@ -321,17 +339,19 @@ export const useIndexStore = defineStore('index', () => {
     let filteredFoods = foodData.value.filter(item => {
       // 直接匹配category字段
       if (item.category === category.name) return true
-      
+
       // 处理一些常见的分类名称变体
       const categoryVariants = {
         '果蔬类': ['果蔬类', '蔬菜', '水果', '果蔬', '生鲜'],
-        '肉类': ['肉类', '肉', '禽肉', '海鲜'],
-        '乳制品': ['乳制品', '奶制品', '乳品'],
-        '主食': ['主食', '谷物', '粮食', '米面'],
+        '肉类': ['肉类', '肉', '禽肉'],
+        '饮品': ['饮品', '乳制品', '奶制品', '乳品', '饮料'],
+        '主食': ['主食', '谷物', '粮食', '米面', '蛋类'],
         '罐头': ['罐头', '罐装食品'],
-        '调料': ['调料', '调味品', '佐料', '香料']
+        '调料': ['调料', '调味品', '佐料', '香料'],
+        '海鲜': ['海鲜', '水产', '海产品'],
+        '熟食': ['熟食', '卤菜', '熟制品']
       }
-      
+
       const variants = categoryVariants[category.name] || [category.name]
       return variants.some(variant => item.category === variant)
     })
@@ -341,10 +361,12 @@ export const useIndexStore = defineStore('index', () => {
       const categoryKeywords = {
         1: ['蔬菜', '水果', '番茄', '土豆', '白菜', '萝卜', '苹果', '香蕉'], // 果蔬类
         2: ['肉', '牛肉', '猪肉', '鸡肉', '鱼', '虾'], // 肉类
-        3: ['牛奶', '酸奶', '奶酪', '黄油'], // 乳制品
-        4: ['米', '面', '面包', '面条', '馒头', '包子'], // 主食
+        3: ['牛奶', '酸奶', '奶酪', '黄油', '饮品', '饮料'], // 饮品
+        4: ['米', '面', '面包', '面条', '馒头', '包子', '蛋', '鸡蛋', '鸭蛋', '鹌鹑蛋'], // 主食（包含蛋类）
         5: ['罐头', '午餐肉', '鱼罐头'], // 罐头
-        6: ['盐', '糖', '醋', '酱油', '料酒', '胡椒'] // 调料
+        6: ['盐', '糖', '醋', '酱油', '料酒', '胡椒'], // 调料
+        7: ['海鲜', '虾', '蟹', '鱼', '贝', '海带', '紫菜', '鲍鱼', '扇贝'], // 海鲜
+        8: ['熟食', '卤菜', '烧鸡', '烤鸭', '火腿', '香肠', '腊肉'] // 熟食
       }
 
       const keywords = categoryKeywords[categoryId] || []
@@ -380,6 +402,24 @@ export const useIndexStore = defineStore('index', () => {
     return categories.sort()
   })
 
+  // 显示的分类列表（根据展开状态决定）
+  const visibleCategories = computed(() => {
+    if (showAllCategories.value) {
+      return foodCategories.value
+    }
+    return foodCategories.value.slice(0, maxVisibleCategories)
+  })
+
+  // 是否需要显示"更多"按钮
+  const shouldShowMoreButton = computed(() => {
+    return foodCategories.value.length > maxVisibleCategories
+  })
+
+  // 切换分类展开/收起状态
+  const toggleCategoriesExpansion = () => {
+    showAllCategories.value = !showAllCategories.value
+  }
+
   // 调试函数：获取指定分类的所有食品
   const debugCategoryFoods = (categoryId) => {
     const category = foodCategories.value.find(cat => cat.id == categoryId)
@@ -387,29 +427,31 @@ export const useIndexStore = defineStore('index', () => {
       console.log('分类不存在:', categoryId)
       return
     }
-    
+
     console.log(`=== 调试分类: ${category.name} (ID: ${categoryId}) ===`)
-    
+
     // 直接匹配
     const directMatch = foodData.value.filter(item => item.category === category.name)
     console.log('直接匹配的食品:', directMatch.map(item => ({ name: item.name, category: item.category })))
-    
+
     // 变体匹配
     const categoryVariants = {
       '果蔬类': ['果蔬类', '蔬菜', '水果', '果蔬', '生鲜'],
-      '肉类': ['肉类', '肉', '禽肉', '海鲜'],
-      '乳制品': ['乳制品', '奶制品', '乳品'],
-      '主食': ['主食', '谷物', '粮食', '米面'],
+      '肉类': ['肉类', '肉', '禽肉'],
+      '饮品': ['饮品', '乳制品', '奶制品', '乳品', '饮料'],
+      '主食': ['主食', '谷物', '粮食', '米面', '蛋类'],
       '罐头': ['罐头', '罐装食品'],
-      '调料': ['调料', '调味品', '佐料', '香料']
+      '调料': ['调料', '调味品', '佐料', '香料'],
+      '海鲜': ['海鲜', '水产', '海产品'],
+      '熟食': ['熟食', '卤菜', '熟制品']
     }
-    
+
     const variants = categoryVariants[category.name] || [category.name]
-    const variantMatch = foodData.value.filter(item => 
+    const variantMatch = foodData.value.filter(item =>
       variants.some(variant => item.category === variant)
     )
     console.log('变体匹配的食品:', variantMatch.map(item => ({ name: item.name, category: item.category })))
-    
+
     // 最终结果
     const finalResult = getFoodsByCategory(categoryId)
     console.log('最终返回的食品数量:', finalResult.length)
@@ -428,12 +470,12 @@ export const useIndexStore = defineStore('index', () => {
           ...item,
           id: item._id || item.id
         }))
-        
+
         // 调试：打印数据库中的所有分类
         const categories = [...new Set(response.data.map(item => item.category).filter(Boolean))]
         console.log('数据库中的分类:', categories)
         console.log('食品数据总数:', response.data.length)
-        
+
         // 按分类统计食品数量
         const categoryStats = {}
         response.data.forEach(item => {
@@ -449,6 +491,74 @@ export const useIndexStore = defineStore('index', () => {
       foodData.value = []
     } finally {
       loading.value = false
+    }
+  }
+
+  // 根据ID从数据库获取单个食品的详细信息
+  const getFoodById = async (foodId) => {
+    try {
+      console.log(`正在获取食品详情，ID: ${foodId}`)
+      console.log(`请求URL: http://localhost:3001/api/food/${foodId}`)
+
+      const response = await axios.get(`http://localhost:3001/api/food/${foodId}`)
+      console.log('API响应状态:', response.status)
+      console.log('API响应数据:', response.data)
+
+      if (response.data) {
+        const food = response.data
+        console.log(`成功获取食品详情: ${food.name}`)
+
+        // 返回格式化的食品数据
+        const formattedData = {
+          id: food._id || food.id,
+          name: food.name,
+          category: food.category || '未知分类',
+          expireDate: food.expireDate,
+          storageLocation: food.storageLocation || '冰箱',
+          createdAt: food.createdAt ? new Date(food.createdAt).toLocaleDateString('zh-CN') : '未知',
+          updatedAt: food.updatedAt ? new Date(food.updatedAt).toLocaleDateString('zh-CN') : '未知',
+          synonyms: food.synonyms || [],
+          description: food.description || '',
+          nutritionInfo: food.nutritionInfo || {},
+          image: getItemImage(food.name, food.category),
+          expiryDays: calculateExpiryDays(food.expireDate)
+        }
+
+        console.log('格式化后的食品数据:', formattedData)
+        return formattedData
+      }
+
+      console.log('API返回空数据')
+      return null
+    } catch (error) {
+      console.error('获取食品详情失败:', error)
+      console.error('错误详情:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        request: error.request ? '请求已发送但无响应' : '请求未发送'
+      })
+
+      // 根据错误类型显示不同的提示信息
+      let errorMessage = '获取食品详情失败'
+      if (error.response) {
+        if (error.response.status === 404) {
+          errorMessage = '食品不存在或已被删除'
+        } else if (error.response.status === 400) {
+          errorMessage = '无效的食品ID'
+        } else if (error.response.status === 500) {
+          errorMessage = '服务器错误，请稍后重试'
+        }
+      } else if (error.request) {
+        errorMessage = '网络连接失败，请检查网络'
+      }
+
+      showToast({
+        message: errorMessage,
+        type: 'fail'
+      })
+
+      throw error
     }
   }
 
@@ -615,32 +725,32 @@ export const useIndexStore = defineStore('index', () => {
   // 取出食材功能
   const takeOutFood = async (food) => {
     const foodId = food._id || food.id
-    
+
     try {
       // 先从数据库中删除食品
       const response = await axios.delete(`http://localhost:3001/api/food/${foodId}`)
-      
+
       if (response.status === 200 || response.status === 204) {
         // 数据库删除成功后，从本地状态中移除
         const index = foodData.value.findIndex(item => (item._id || item.id) === foodId)
         if (index > -1) {
           foodData.value.splice(index, 1)
         }
-        
+
         // 创建取出记录
         const takenOutItem = {
           ...food,
           takenOutDate: new Date().toISOString(),
           takenOutTime: new Date().toLocaleString('zh-CN')
         }
-        
+
         // 添加到已取出列表的开头
         takenOutFoods.value.unshift(takenOutItem)
-        
+
         // 清理过期记录并保存
         cleanExpiredTakenOutFoods()
         saveTakenOutFoods()
-        
+
         showToast({
           message: `${food.name} 已取出`,
           type: 'success'
@@ -650,7 +760,7 @@ export const useIndexStore = defineStore('index', () => {
       }
     } catch (error) {
       console.error('取出食材失败:', error)
-      
+
       // 根据错误类型显示不同的提示信息
       let errorMessage = '取出失败，请重试'
       if (error.response) {
@@ -664,12 +774,12 @@ export const useIndexStore = defineStore('index', () => {
         // 网络错误
         errorMessage = '网络连接失败，请检查网络'
       }
-      
+
       showToast({
         message: errorMessage,
         type: 'fail'
       })
-      
+
       // 抛出错误，让调用方知道操作失败
       throw error
     }
@@ -681,6 +791,8 @@ export const useIndexStore = defineStore('index', () => {
     loading,
     total,
     foodCategories,
+    showAllCategories,
+    maxVisibleCategories,
 
     // 计算属性
     expired,
@@ -690,6 +802,8 @@ export const useIndexStore = defineStore('index', () => {
     recentlyAdded,
     getExpiringIngredient,
     getActualCategories,
+    visibleCategories,
+    shouldShowMoreButton,
 
     // 工具函数
     calculateExpiryDays,
@@ -698,9 +812,11 @@ export const useIndexStore = defineStore('index', () => {
     getFoodsByCategory,
     getCategoryDescription,
     debugCategoryFoods,
+    toggleCategoriesExpansion,
 
     // 异步操作
     loadFoodData,
+    getFoodById,
 
     // 路由数据缓存管理
     setRouteData,
