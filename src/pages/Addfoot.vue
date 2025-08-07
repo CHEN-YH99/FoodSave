@@ -1,10 +1,16 @@
 <template>
   <div class="add-food-page">
     <!-- 导航栏 -->
-    <van-nav-bar title="添加食材" left-arrow @click-left="onClickLeft" fixed placeholder>
+    <van-nav-bar title="添加食材" left-arrow @click-left="store.onClickLeft" fixed placeholder>
       <template #right>
-        <van-button type="primary" size="small" round @click="onSave" :disabled="!isFormValid">
-          <van-icon name="success" />
+        <van-button 
+          :loading="store.isloading" 
+          text="保存" 
+          color="rgba(0,150,5,0.5)" 
+          size="small" 
+          round 
+          @click="onSave"
+          :disabled="!isFormValid">
         </van-button>
       </template>
     </van-nav-bar>
@@ -16,14 +22,14 @@
           <span class="required">*</span>
           食材名称
         </div>
-        <van-field v-model="formData.name" placeholder="输入食材名称..." clearable />
+        <van-field v-model="store.formData.name" @keyup.enter ="store.handleinput" placeholder="输入食材名称..." clearable />
 
         <!-- 最近使用的食材 -->
-        <div class="recent-foods">
+        <div class="recent-foods" v-if="store.recentFoods.length > 0">
           <div class="recent-title">最近：</div>
           <div class="recent-tags">
-            <van-tag v-for="food in recentFoods" :key="food" type="default" size="medium"
-              @click="selectRecentFood(food)">
+            <van-tag v-for="food in store.recentFoods" :key="food" type="default" size="medium"
+              @click="store.selectRecentFood(food)">
               {{ food }}
             </van-tag>
           </div>
@@ -36,11 +42,11 @@
           <span class="required">*</span>
           分类
         </div>
-        <van-field v-model="formData.category" placeholder="选择分类" readonly is-link @click="showCategoryPicker = true" />
+        <van-field v-model="store.formData.category" placeholder="选择分类" readonly is-link @click="store.showCategoryPicker = true" />
       </div>
 
       <!-- 购买日期和保质期 -->
-      <div class="form-section">
+      <!-- <div class="form-section">
         <div class="date-row">
           <div class="date-item">
             <div class="section-title">
@@ -59,10 +65,10 @@
               @click="showShelfLifePicker = true" />
           </div>
         </div>
-      </div>
+      </div> -->
 
       <!-- 存储位置 -->
-      <div class="form-section">
+      <!-- <div class="form-section">
         <div class="section-title">
           <span class="required">*</span>
           存储位置
@@ -73,10 +79,10 @@
             <van-icon name="star" v-if="formData.storageLocation.includes('★')" />
           </template>
         </van-field>
-      </div>
+      </div> -->
 
       <!-- 数量和单位 -->
-      <div class="form-section">
+      <!-- <div class="form-section">
         <div class="quantity-row">
           <div class="quantity-item">
             <div class="section-title">数量</div>
@@ -89,10 +95,10 @@
             <van-field v-model="formData.unit" placeholder="选择单位" readonly is-link @click="showUnitPicker = true" />
           </div>
         </div>
-      </div>
+      </div> -->
 
       <!-- 临期提醒 -->
-      <div class="form-section">
+      <!-- <div class="form-section">
         <div class="section-title">临期提醒</div>
         <div class="reminder-row">
           <span class="reminder-text">3天后</span>
@@ -100,7 +106,7 @@
             可自定义 <van-icon name="arrow" />
           </van-button>
         </div>
-      </div>
+      </div> -->
     </div>
 
     <!-- 分类选择器 -->
@@ -137,126 +143,33 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { useAddFootStore } from '../store/addfoot.js'
+// import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Toast } from 'vant'
 
 const router = useRouter()
+const store = useAddFootStore()
 
-// 表单数据
-const formData = ref({
-  name: '',
-  category: '蔬菜',
-  purchaseDate: '2025/08/06',
-  shelfLife: '7天',
-  storageLocation: '冰箱下层冷冻室 ★',
-  quantity: 1,
-  unit: '千克'
-})
+// 按钮加载初始化
+// const isloading = ref(false)
 
-// 最近使用的食材
-const recentFoods = ref(['牛肉', '牛奶', '西红柿', '鸡蛋', '面包'])
 
-// 弹窗显示状态
-const showCategoryPicker = ref(false)
-const showDatePicker = ref(false)
-const showShelfLifePicker = ref(false)
-const showStoragePicker = ref(false)
-const showUnitPicker = ref(false)
-const showReminderPicker = ref(false)
 
-// 日期相关
-const currentDate = ref(new Date())
-const minDate = new Date(2020, 0, 1)
-const maxDate = new Date(2030, 11, 31)
 
-// 选择器数据
-const categoryColumns = ref([
-  '蔬菜', '水果', '肉类', '海鲜', '蛋奶', '主食', '调料', '零食', '饮品', '其他'
-])
-
-const shelfLifeColumns = ref([
-  '1天', '2天', '3天', '7天', '15天', '30天', '60天', '90天', '180天', '365天'
-])
-
-const storageColumns = ref([
-  '冰箱上层冷藏室',
-  '冰箱中层冷藏室',
-  '冰箱下层冷冻室 ★',
-  '冰箱门储物格',
-  '常温储存',
-  '阴凉干燥处',
-  '冷冻室',
-  '保鲜盒'
-])
-
-const unitColumns = ref([
-  '个', '只', '条', '根', '片', '块', '包', '袋', '盒', '瓶', '罐', '千克', '克', '斤', '两', '升', '毫升'
-])
-
-const reminderColumns = ref([
-  '1天后', '2天后', '3天后', '5天后', '7天后', '10天后', '15天后', '30天后'
-])
-
-// 表单验证
-const isFormValid = computed(() => {
-  return formData.value.name.trim() !== '' &&
-    formData.value.category !== '' &&
-    formData.value.purchaseDate !== '' &&
-    formData.value.shelfLife !== '' &&
-    formData.value.storageLocation !== ''
-})
-
-// 方法
-const onClickLeft = () => {
-  router.back()
-}
-
-const selectRecentFood = (food) => {
-  formData.value.name = food
-}
-
-const onCategoryConfirm = ({ selectedValues }) => {
-  formData.value.category = selectedValues[0]
-  showCategoryPicker.value = false
-}
-
-const onDateConfirm = ({ selectedValues }) => {
-  const [year, month, day] = selectedValues
-  formData.value.purchaseDate = `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}`
-  showDatePicker.value = false
-}
-
-const onShelfLifeConfirm = ({ selectedValues }) => {
-  formData.value.shelfLife = selectedValues[0]
-  showShelfLifePicker.value = false
-}
-
-const onStorageConfirm = ({ selectedValues }) => {
-  formData.value.storageLocation = selectedValues[0]
-  showStoragePicker.value = false
-}
-
-const onUnitConfirm = ({ selectedValues }) => {
-  formData.value.unit = selectedValues[0]
-  showUnitPicker.value = false
-}
-
-const onReminderConfirm = ({ selectedValues }) => {
-  Toast(`提醒时间设置为：${selectedValues[0]}`)
-  showReminderPicker.value = false
-}
-
-const onSave = () => {
+const onSave = async () => {
   if (!isFormValid.value) {
     Toast('请填写完整信息')
     return
   }
 
-  // 这里可以添加保存逻辑
-  Toast.success('食材添加成功')
+  // 调用 store 的 onSave 方法，传入表单数据
+  await store.onSave(formData.value)
+
+  Toast({ type: 'success', message: '食材添加成功' })
   router.back()
 }
+
 </script>
 
 <style scoped lang="scss">

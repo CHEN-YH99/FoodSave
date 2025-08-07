@@ -180,7 +180,6 @@ const loadFoodData = async () => {
       const categories = [...new Set(data.value.map(item => item.category))];
       // console.log('📋 数据分类:', categories.join(', '));
     } else {
-      console.warn('⚠️ MongoDB中没有找到食材数据');
       import('vant').then(({ showToast }) => {
         showToast({
           message: 'MongoDB中暂无食材数据',
@@ -189,7 +188,6 @@ const loadFoodData = async () => {
       });
     }
   } catch (error) {
-    console.error('❌ 从MongoDB加载数据失败:', error);
     data.value = []; // 确保数据为空数组
 
     // 显示错误提示
@@ -209,8 +207,6 @@ const handleInput = debounce(async (value) => {
 
   if (value.length > 0) {
     try {
-      console.log(`🔍 正在MongoDB中搜索: "${value}"`);
-
       // 完全使用MongoDB服务器端搜索
       const [suggestionsRes, searchRes] = await Promise.all([
         axios.get(`http://localhost:3001/api/food/suggestions?q=${encodeURIComponent(value)}&limit=5`),
@@ -225,8 +221,6 @@ const handleInput = debounce(async (value) => {
         item: { ...item, id: item._id || item.id }
       }));
 
-      console.log(`✅ 找到 ${suggestionsRes.data.length} 个建议, ${searchRes.data.length} 个搜索结果`);
-
       // 如果输入长度较短，优先显示建议；较长时显示结果
       if (value.length <= 2) {
         showSuggestions.value = true;
@@ -235,11 +229,8 @@ const handleInput = debounce(async (value) => {
       }
       showDropdown.value = true;
     } catch (error) {
-      console.error('❌ MongoDB搜索失败:', error);
-
       // 只有在有本地缓存数据时才使用Fuse.js作为备选
       if (fuse.value && data.value.length > 0) {
-        console.log('🔄 使用本地缓存数据进行搜索');
         const results = fuse.value.search(value);
         filteredSuggestions.value = results.slice(0, 5);
         searchResults.value = results;
@@ -252,7 +243,6 @@ const handleInput = debounce(async (value) => {
         showDropdown.value = true;
       } else {
         // 没有数据可搜索
-        console.log('⚠️ 无法搜索：MongoDB不可用且无本地数据');
         showDropdown.value = false;
         import('vant').then(({ showToast }) => {
           showToast({
@@ -288,14 +278,11 @@ const search = async () => {
       item: { ...item, id: item._id || item.id }
     }));
 
-    console.log(`MongoDB搜索结果: 找到 ${searchResults.value.length} 个匹配项`);
   } catch (error) {
-    console.error('MongoDB搜索失败，使用本地Fuse.js搜索作为备选:', error);
     // 服务器搜索失败时fallback到本地搜索
     if (fuse.value && data.value.length > 0) {
       const results = fuse.value.search(searchvalue.value.trim());
       searchResults.value = results;
-      console.log(`本地搜索结果: 找到 ${searchResults.value.length} 个匹配项`);
     } else {
       searchResults.value = [];
       import('vant').then(({ showToast }) => {
@@ -365,7 +352,6 @@ const handleBlur = () => {
 
 // 选择搜索结果项
 const selectSearchResult = (item) => {
-  console.log('选择了食材:', item);
 
   // 将食品名称自动填充到搜索输入框
   searchvalue.value = item.name;
@@ -385,7 +371,6 @@ const selectSearchResult = (item) => {
 
 // 扫码功能
 const scancode = async () => {
-  console.log('扫码功能触发');
   showScanPopup.value = true;
   // 延迟一下等弹窗完全显示后再开启摄像头
   setTimeout(() => {
@@ -453,7 +438,6 @@ const openCamera = async () => {
 
       // 等待视频加载完成后开始识别
       video.value.addEventListener('loadedmetadata', () => {
-        console.log('摄像头加载完成，准备开始扫描');
         // 延迟一下确保视频完全加载
         setTimeout(() => {
           if (isScanning.value) {
@@ -463,7 +447,6 @@ const openCamera = async () => {
       }, { once: true }); // 只监听一次
     }
   } catch (error) {
-    console.error('无法访问摄像头:', error);
     import('vant').then(({ showToast }) => {
       showToast({
         message: '无法访问摄像头，请检查权限设置',
@@ -508,7 +491,6 @@ const detectCodeInFrame = () => {
     
     return hasCodePattern;
   } catch (error) {
-    console.debug('码检测失败:', error);
     return false;
   }
 };
@@ -584,7 +566,6 @@ const startContinuousScan = () => {
       }
       
       // 第二阶段：检测到码特征后，进行详细读取
-      console.log('检测到码特征，开始读取...');
       const result = await codeReader.decodeOnceFromVideoDevice(undefined, video.value);
       
       if (result && isScanning.value) {
@@ -594,7 +575,7 @@ const startContinuousScan = () => {
       }
     } catch (error) {
       if (!(error instanceof NotFoundException)) {
-        console.debug('扫码识别中:', error.message);
+        // 扫码识别中
       }
       // 继续下一次扫描
     }
@@ -603,7 +584,6 @@ const startContinuousScan = () => {
 
 // 处理扫描成功
 const handleScanSuccess = async (scannedText) => {
-  console.log('扫描到内容:', scannedText);
 
   // 验证是否为有效的二维码或条形码内容
   if (!isValidCode(scannedText)) {
@@ -710,7 +690,7 @@ const extractSearchTerm = (scannedText) => {
           }
         }
       } catch (urlError) {
-        console.log('URL解析失败:', urlError);
+        // URL解析失败
       }
 
       return '扫码商品';
@@ -732,14 +712,13 @@ const extractSearchTerm = (scannedText) => {
       try {
         return decodeURIComponent(scannedText);
       } catch (decodeError) {
-        console.log('URL解码失败:', decodeError);
+        // URL解码失败
       }
     }
 
     // 直接返回扫描到的文本（可能是产品名称）
     return scannedText.trim();
   } catch (error) {
-    console.error('提取搜索词失败:', error);
     return scannedText.trim();
   }
 };
@@ -758,7 +737,6 @@ const startScan = async () => {
 // 切换闪光灯
 const toggleFlash = async () => {
   flashOn.value = !flashOn.value;
-  console.log('闪光灯状态:', flashOn.value ? '开启' : '关闭');
 
   try {
     if (stream) {
@@ -772,7 +750,7 @@ const toggleFlash = async () => {
       }
     }
   } catch (error) {
-    console.log('闪光灯控制失败:', error);
+    // 闪光灯控制失败
   }
 
   // 显示状态提示

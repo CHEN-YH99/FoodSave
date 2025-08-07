@@ -7,42 +7,45 @@ const routes = [
     // component: index,
     //懒加载方式导入组件,必须配置vite.config.js才能使用“@”，不然会报错
     component: () => import('@/pages/Index.vue'),
-    meta:{title:'首页'}
+    meta: { title: '首页' }
   },
   {
     path: '/computed',
     name: 'Computed',
     // component: location,
     component: () => import('@/pages/Computed.vue'),
-    meta:{title:'统计'}
+    meta: { title: '统计' }
   },
   {
     path: '/addfoot',
     name: 'Addfoot',
     // component: location,
     component: () => import('@/pages/Addfoot.vue'),
-    meta:{title:'地图'}
+    meta: { 
+      title: '地图', 
+      hideHeader: true 
+    }
   },
   {
     path: '/remind',
     name: 'Remind',
     // component: location,
     component: () => import('@/pages/Remind.vue'),
-    meta:{title:'地图'}
+    meta: { title: '地图' }
   },
   {
     path: '/mine',
     name: 'Mine',
     // component: mine,
     component: () => import('@/pages/Mine.vue'),
-    meta:{title:'我的'}
+    meta: { title: '我的' }
   },
   {
     path: '/food-detail/:id',
     name: 'FoodDetail',
     component: () => import('@/components/foot/FoodCardDetail.vue'),
-    meta:{
-      title:'食品详情',
+    meta: {
+      title: '食品详情',
       hideHeader: true,
       hideTabBar: true
     },
@@ -52,8 +55,8 @@ const routes = [
     path: '/category/:categoryId',
     name: 'CategoryDetail',
     component: () => import('@/components/foot/FoodCardDetail.vue'),
-    meta:{
-      title:'分类详情',
+    meta: {
+      title: '分类详情',
       hideHeader: true,
       hideTabBar: true
     },

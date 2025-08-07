@@ -30,7 +30,7 @@ function loadTakenOutFoodsFromStorage() {
       })
     }
   } catch (error) {
-    console.error('加载已取出食材数据失败:', error)
+    // 加载已取出食材数据失败
   }
   return []
 }
@@ -40,7 +40,7 @@ function saveTakenOutFoodsToStorage(data) {
   try {
     localStorage.setItem(TAKEN_OUT_FOODS_KEY, JSON.stringify(data))
   } catch (error) {
-    console.error('保存已取出食材数据失败:', error)
+    // 保存已取出食材数据失败
   }
 }
 
@@ -424,15 +424,11 @@ export const useIndexStore = defineStore('index', () => {
   const debugCategoryFoods = (categoryId) => {
     const category = foodCategories.value.find(cat => cat.id == categoryId)
     if (!category) {
-      console.log('分类不存在:', categoryId)
       return
     }
 
-    console.log(`=== 调试分类: ${category.name} (ID: ${categoryId}) ===`)
-
     // 直接匹配
     const directMatch = foodData.value.filter(item => item.category === category.name)
-    console.log('直接匹配的食品:', directMatch.map(item => ({ name: item.name, category: item.category })))
 
     // 变体匹配
     const categoryVariants = {
@@ -450,12 +446,9 @@ export const useIndexStore = defineStore('index', () => {
     const variantMatch = foodData.value.filter(item =>
       variants.some(variant => item.category === variant)
     )
-    console.log('变体匹配的食品:', variantMatch.map(item => ({ name: item.name, category: item.category })))
 
     // 最终结果
     const finalResult = getFoodsByCategory(categoryId)
-    console.log('最终返回的食品数量:', finalResult.length)
-    console.log('最终返回的食品:', finalResult.map(item => ({ name: item.name, category: item.category })))
   }
 
   // 异步操作
@@ -471,10 +464,8 @@ export const useIndexStore = defineStore('index', () => {
           id: item._id || item.id
         }))
 
-        // 调试：打印数据库中的所有分类
+        // 统计数据库中的分类信息
         const categories = [...new Set(response.data.map(item => item.category).filter(Boolean))]
-        console.log('数据库中的分类:', categories)
-        console.log('食品数据总数:', response.data.length)
 
         // 按分类统计食品数量
         const categoryStats = {}
@@ -482,12 +473,10 @@ export const useIndexStore = defineStore('index', () => {
           const cat = item.category || '未分类'
           categoryStats[cat] = (categoryStats[cat] || 0) + 1
         })
-        console.log('各分类食品数量:', categoryStats)
       } else {
         foodData.value = []
       }
     } catch (error) {
-      console.error('加载数据失败:', error)
       foodData.value = []
     } finally {
       loading.value = false
@@ -497,16 +486,10 @@ export const useIndexStore = defineStore('index', () => {
   // 根据ID从数据库获取单个食品的详细信息
   const getFoodById = async (foodId) => {
     try {
-      console.log(`正在获取食品详情，ID: ${foodId}`)
-      console.log(`请求URL: http://localhost:3001/api/food/${foodId}`)
-
       const response = await axios.get(`http://localhost:3001/api/food/${foodId}`)
-      console.log('API响应状态:', response.status)
-      console.log('API响应数据:', response.data)
 
       if (response.data) {
         const food = response.data
-        console.log(`成功获取食品详情: ${food.name}`)
 
         // 返回格式化的食品数据
         const formattedData = {
@@ -524,20 +507,11 @@ export const useIndexStore = defineStore('index', () => {
           expiryDays: calculateExpiryDays(food.expireDate)
         }
 
-        console.log('格式化后的食品数据:', formattedData)
         return formattedData
       }
 
-      console.log('API返回空数据')
       return null
     } catch (error) {
-      console.error('获取食品详情失败:', error)
-      console.error('错误详情:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        request: error.request ? '请求已发送但无响应' : '请求未发送'
-      })
 
       // 根据错误类型显示不同的提示信息
       let errorMessage = '获取食品详情失败'
@@ -565,7 +539,6 @@ export const useIndexStore = defineStore('index', () => {
   // 事件处理函数
   // 分类点击处理
   const handleCategoryClick = (category, router) => {
-    console.log('点击了分类:', category.name)
 
     // 将分类数据存储到缓存中，避免敏感信息暴露在URL中
     const cacheKey = `category_${category.id}`
@@ -586,7 +559,6 @@ export const useIndexStore = defineStore('index', () => {
 
   // 推荐点击处理
   const handleRecommendClick = (router) => {
-    console.log('点击了推荐:', recommendData.value)
     const ingredient = recommendData.value.ingredient
     const foodId = 'recommend-' + Date.now()
 
@@ -611,7 +583,6 @@ export const useIndexStore = defineStore('index', () => {
 
   // 最近添加项点击处理
   const handleRecentItemClick = (item, router) => {
-    console.log('点击了最近添加项:', item)
 
     // 将食品数据存储到缓存中
     const cacheKey = `food_${item.id}`
@@ -634,7 +605,7 @@ export const useIndexStore = defineStore('index', () => {
 
   // 查看全部点击处理
   const handleViewAllClick = () => {
-    console.log('点击了查看全部')
+    // 查看全部处理逻辑
   }
 
   // 过期预警点击处理
@@ -759,7 +730,6 @@ export const useIndexStore = defineStore('index', () => {
         throw new Error(`删除失败，状态码: ${response.status}`)
       }
     } catch (error) {
-      console.error('取出食材失败:', error)
 
       // 根据错误类型显示不同的提示信息
       let errorMessage = '取出失败，请重试'

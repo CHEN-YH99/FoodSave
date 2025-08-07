@@ -36,8 +36,7 @@ const startServer = async () => {
   await connectDB();
   // 监听端口，启动服务器
   app.listen(PORT, () => {
-    // 输出服务器运行在端口PORT的信息
-    console.log(`服务器运行在端口 ${PORT}`);
+    // 服务器启动成功
   });
 };
 

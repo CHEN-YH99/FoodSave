@@ -320,8 +320,6 @@ const handleMore = () => {
 
 // 点击食品项（在分类模式下）
 const handleFoodClick = (food) => {
-  console.log('点击食品:', food.name, 'ID:', food.id)
-  console.log('完整食品数据:', food)
 
   // 直接跳转到食品详情页，只传递ID参数
   // 不再使用缓存，而是在详情页实时获取最新数据
@@ -418,31 +416,19 @@ const loadCategoryData = () => {
 
 // 从数据库实时加载食品详情数据
 const loadFoodData = async () => {
-  console.log('=== loadFoodData 开始执行 ===')
-  console.log('isCategoryMode:', isCategoryMode.value)
-
   if (!isCategoryMode.value) {
     const foodId = route.params.id
-    console.log(`准备加载食品详情，ID: ${foodId}`)
 
     try {
-      console.log(`开始加载食品详情，ID: ${foodId}`)
-
       // 显示加载状态
       store.loading = true
-      console.log('设置loading状态为true')
 
       // 从数据库实时获取食品详情
-      console.log('调用 store.getFoodById...')
       const foodData = await store.getFoodById(foodId)
-      console.log('getFoodById 返回结果:', foodData)
 
       if (foodData) {
         foodDetail.value = { ...foodData }
-        console.log(`食品详情加载成功: ${foodData.name}`)
-        console.log('更新后的 foodDetail.value:', foodDetail.value)
       } else {
-        console.log('getFoodById 返回null，食品不存在')
         // 如果数据库中没有找到，显示错误信息
         showToast({
           message: '食品不存在或已被删除',
@@ -455,12 +441,8 @@ const loadFoodData = async () => {
         }, 1500)
       }
     } catch (error) {
-      console.error('加载食品详情失败:', error)
-
       // 如果获取失败，尝试从本地缓存获取（作为备选方案）
-      console.log('尝试从本地缓存获取数据...')
       const food = store.foodData.find(item => (item._id || item.id) == foodId)
-      console.log('本地缓存中找到的食品:', food)
 
       if (food) {
         foodDetail.value = {
@@ -475,13 +457,11 @@ const loadFoodData = async () => {
           expiryDays: store.calculateExpiryDays(food.expireDate)
         }
 
-        console.log('使用本地缓存数据:', foodDetail.value)
         showToast({
           message: '使用本地缓存数据，可能不是最新信息',
           type: 'warning'
         })
       } else {
-        console.log('本地缓存中也没有找到该食品')
         showToast({
           message: '无法加载食品详情',
           type: 'fail'
@@ -493,10 +473,9 @@ const loadFoodData = async () => {
       }
     } finally {
       store.loading = false
-      console.log('设置loading状态为false')
     }
   } else {
-    console.log('当前为分类模式，跳过食品详情加载')
+    // 当前为分类模式，跳过食品详情加载
   }
 }
 
@@ -508,22 +487,13 @@ const initData = async () => {
 
 // 监听路由参数变化
 watch(() => route.params, async (newParams, oldParams) => {
-  console.log('=== 路由参数变化 ===')
-  console.log('旧参数:', oldParams)
-  console.log('新参数:', newParams)
-
   if (newParams.id !== oldParams?.id) {
-    console.log('食品ID发生变化，重新加载数据')
     await initData()
   }
 }, { immediate: false })
 
 // 页面挂载时加载数据
 onMounted(async () => {
-  console.log('=== FoodCardDetail 组件挂载 ===')
-  console.log('当前路由:', route.name, route.params)
-  console.log('是否为分类模式:', isCategoryMode.value)
-
   // 如果store中没有数据，先加载数据
   if (store.foodData.length === 0) {
     await store.loadFoodData()
@@ -534,14 +504,8 @@ onMounted(async () => {
 
   // 调试：如果是分类模式，打印调试信息
   if (isCategoryMode.value) {
-    console.log(`当前分类: ${categoryInfo.value.name} (ID: ${categoryInfo.value.id})`)
-    console.log('数据库中的实际分类:', store.getActualCategories)
-
     // 调试分类匹配情况
     store.debugCategoryFoods(categoryInfo.value.id)
-  } else {
-    console.log('当前为食品详情模式，食品ID:', route.params.id)
-    console.log('食品详情数据:', foodDetail.value)
   }
 })
 </script>
