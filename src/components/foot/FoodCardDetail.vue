@@ -201,7 +201,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
-import { showToast } from 'vant'
+import { showToast, showConfirmDialog } from 'vant'
 
 const route = useRoute()
 const router = useRouter()
@@ -338,11 +338,35 @@ const handleTakeOut = async (food) => {
     return
   }
 
-  // 添加加载状态
-  takingOutIds.value.add(foodId)
-
   try {
+    // 显示确认对话框
+    await showConfirmDialog({
+      title: '确认取出',
+      message: '取出记录可以在取出列表查看',
+      confirmButtonText: '确认取出',
+      cancelButtonText: '取消'
+    })
+
+    // 用户确认后，添加加载状态
+    takingOutIds.value.add(foodId)
+
+    // 执行取出操作
     await store.takeOutFood(food)
+
+    // 显示成功提示
+    showToast({
+      message: '取出成功',
+      type: 'success'
+    })
+
+  } catch (error) {
+    // 用户取消或操作失败
+    if (error !== 'cancel') {
+      showToast({
+        message: '取出失败，请重试',
+        type: 'fail'
+      })
+    }
   } finally {
     // 移除加载状态
     takingOutIds.value.delete(foodId)

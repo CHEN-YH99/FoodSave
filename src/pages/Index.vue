@@ -137,7 +137,6 @@
 import { onMounted, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
-import TabBar from '../components/layout/TabBar.vue'
 
 // 使用router和store
 const router = useRouter()

@@ -1,16 +1,10 @@
 <template>
   <div class="add-food-page">
     <!-- 导航栏 -->
-    <van-nav-bar title="添加食材" left-arrow @click-left="store.onClickLeft" fixed placeholder>
+    <van-nav-bar title="添加食材" left-arrow @click-left="() => router.back()" fixed placeholder>
       <template #right>
-        <van-button 
-          :loading="store.isloading" 
-          text="保存" 
-          color="rgba(0,150,5,0.5)" 
-          size="small" 
-          round 
-          @click="onSave"
-          :disabled="!isFormValid">
+        <van-button :loading="store.isloading" text="保存" color="rgba(0,150,5,0.5)" size="small" round @click="onSave"
+          :disabled="!store.isFormValid">
         </van-button>
       </template>
     </van-nav-bar>
@@ -22,7 +16,7 @@
           <span class="required">*</span>
           食材名称
         </div>
-        <van-field v-model="store.formData.name" @keyup.enter ="store.handleinput" placeholder="输入食材名称..." clearable />
+        <van-field v-model="store.formData.name" @keyup.enter="store.handleinput" placeholder="输入食材名称..." clearable />
 
         <!-- 最近使用的食材 -->
         <div class="recent-foods" v-if="store.recentFoods.length > 0">
@@ -42,30 +36,36 @@
           <span class="required">*</span>
           分类
         </div>
-        <van-field v-model="store.formData.category" placeholder="选择分类" readonly is-link @click="store.showCategoryPicker = true" />
+        <van-field v-model="store.formData.category" placeholder="选择分类" readonly is-link
+          @click="store.handleCategoryClick" />
       </div>
 
       <!-- 购买日期和保质期 -->
-      <!-- <div class="form-section">
+      <div class="form-section">
         <div class="date-row">
           <div class="date-item">
             <div class="section-title">
               <span class="required">*</span>
-              购买日期
+              存放日期
             </div>
-            <van-field v-model="formData.purchaseDate" placeholder="选择日期" readonly is-link
-              @click="showDatePicker = true" />
+            <van-field v-model="store.formData.purchaseDate" placeholder="选择日期" readonly is-link
+              @click="store.showDatePicker = true" />
           </div>
           <div class="date-item">
             <div class="section-title">
               <span class="required">*</span>
               保质期
             </div>
-            <van-field v-model="formData.shelfLife" placeholder="选择保质期" readonly is-link
-              @click="showShelfLifePicker = true" />
+            <van-field v-model="store.formData.shelfLife" placeholder="输入或选择保质期" clearable>
+              <template #button>
+                <van-button size="small" type="primary" plain @click="store.showShelfLifePicker = true">
+                  选择
+                </van-button>
+              </template>
+            </van-field>
           </div>
         </div>
-      </div> -->
+      </div>
 
       <!-- 存储位置 -->
       <!-- <div class="form-section">
@@ -109,65 +109,73 @@
       </div> -->
     </div>
 
+    <!-- 选择器弹窗 -->
     <!-- 分类选择器 -->
-    <van-popup v-model:show="showCategoryPicker" position="bottom">
-      <van-picker :columns="categoryColumns" @confirm="onCategoryConfirm" @cancel="showCategoryPicker = false" />
+    <van-popup v-model:show="store.showCategoryPicker" position="bottom">
+      <van-picker title="选择分类" :columns="[store.categoryColumns]" @confirm="store.onCategoryConfirm"
+        @cancel="store.showCategoryPicker = false" />
     </van-popup>
 
     <!-- 日期选择器 -->
-    <van-popup v-model:show="showDatePicker" position="bottom">
-      <van-date-picker v-model="currentDate" @confirm="onDateConfirm" @cancel="showDatePicker = false"
-        :min-date="minDate" :max-date="maxDate" />
+    <van-popup v-model:show="store.showDatePicker" position="bottom">
+      <van-date-picker v-model="store.currentDate" title="选择购买日期" @confirm="store.onDateConfirm"
+        @cancel="store.showDatePicker = false" :min-date="store.minDate" :max-date="store.maxDate" />
     </van-popup>
 
     <!-- 保质期选择器 -->
-    <van-popup v-model:show="showShelfLifePicker" position="bottom">
-      <van-picker :columns="shelfLifeColumns" @confirm="onShelfLifeConfirm" @cancel="showShelfLifePicker = false" />
+    <van-popup v-model:show="store.showShelfLifePicker" position="bottom">
+      <van-picker title="选择保质期" :columns="[store.shelfLifeColumns]" @confirm="store.onShelfLifeConfirm"
+        @cancel="store.showShelfLifePicker = false" />
     </van-popup>
 
     <!-- 存储位置选择器 -->
-    <van-popup v-model:show="showStoragePicker" position="bottom">
-      <van-picker :columns="storageColumns" @confirm="onStorageConfirm" @cancel="showStoragePicker = false" />
+    <van-popup v-model:show="store.showStoragePicker" position="bottom">
+      <van-picker title="选择存储位置" :columns="store.storageColumns" @confirm="store.onStorageConfirm"
+        @cancel="store.showStoragePicker = false" />
     </van-popup>
 
     <!-- 单位选择器 -->
-    <van-popup v-model:show="showUnitPicker" position="bottom">
-      <van-picker :columns="unitColumns" @confirm="onUnitConfirm" @cancel="showUnitPicker = false" />
+    <van-popup v-model:show="store.showUnitPicker" position="bottom">
+      <van-picker title="选择单位" :columns="store.unitColumns" @confirm="store.onUnitConfirm"
+        @cancel="store.showUnitPicker = false" />
     </van-popup>
 
     <!-- 提醒时间选择器 -->
-    <van-popup v-model:show="showReminderPicker" position="bottom">
-      <van-picker :columns="reminderColumns" @confirm="onReminderConfirm" @cancel="showReminderPicker = false" />
+    <van-popup v-model:show="store.showReminderPicker" position="bottom">
+      <van-picker title="选择提醒时间" :columns="store.reminderColumns" @confirm="handleReminderConfirm"
+        @cancel="store.showReminderPicker = false" />
     </van-popup>
   </div>
 </template>
 
 <script setup>
 import { useAddFootStore } from '../store/addfoot.js'
-// import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Toast } from 'vant'
 
 const router = useRouter()
 const store = useAddFootStore()
 
-// 按钮加载初始化
-// const isloading = ref(false)
+// 处理提醒确认（需要在组件中处理 Toast）
+const handleReminderConfirm = ({ selectedValues }) => {
+  Toast(`提醒时间设置为：${selectedValues[0]}`)
+  store.onReminderConfirm({ selectedValues })
+}
 
-
-
-
+// 保存表单
 const onSave = async () => {
-  if (!isFormValid.value) {
+  if (!store.isFormValid) {
     Toast('请填写完整信息')
     return
   }
 
-  // 调用 store 的 onSave 方法，传入表单数据
-  await store.onSave(formData.value)
-
-  Toast({ type: 'success', message: '食材添加成功' })
-  router.back()
+  try {
+    await store.onSave(store.formData)
+    Toast.success('食材添加成功')
+    router.back()
+  } catch (error) {
+    Toast.fail('保存失败，请重试')
+  }
 }
 
 </script>
@@ -230,6 +238,22 @@ const onSave = async () => {
 
   .date-item {
     flex: 1;
+
+    // 统一字段高度
+    :deep(.van-field) {
+      min-height: 44px;
+
+      .van-field__control {
+        min-height: 44px;
+        line-height: 44px;
+      }
+
+      .van-field__button {
+        height: 44px;
+        display: flex;
+        align-items: center;
+      }
+    }
   }
 }
 
