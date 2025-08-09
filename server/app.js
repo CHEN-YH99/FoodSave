@@ -17,11 +17,7 @@ const connectDB = async () => {
   try {
     // 使用mongoose连接数据库，指定数据库地址
     await mongoose.connect('mongodb://localhost:27017/food_management');
-    // 连接成功后，打印提示信息
-    // console.log('MongoDB连接成功');
   } catch (error) {
-    // 连接失败后，打印错误信息，并退出进程
-    // console.error('MongoDB连接失败:', error);
     process.exit(1);
   }
 };

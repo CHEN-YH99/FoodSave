@@ -136,7 +136,7 @@ export const useIndexStore = defineStore('index', () => {
   const foodCategories = ref([
     {
       id: 1,
-      name: '果蔬类',
+      name: '蔬菜类',
       icon: 'shop-o',
       bgColor: '#e8f5e8',
       iconColor: '#52c41a'
@@ -192,8 +192,15 @@ export const useIndexStore = defineStore('index', () => {
     },
     {
       id: 9,
+      name: '水果',
+      icon: 'flower-o',
+      bgColor: '#FFF2E8',
+      iconColor: '#FA8C16'
+    },
+    {
+      id: 10,
       name: '其他',
-      icon: 'hot-o',
+      icon: 'points',
       bgColor: '#FFF2E8',
       iconColor: '#FA8C16'
     }
@@ -537,18 +544,10 @@ export const useIndexStore = defineStore('index', () => {
           id: item._id || item.id
         }))
 
-        // 调试：显示所有食材的时间戳情况
-        console.log('=== 数据库中所有食材的时间戳情况 ===')
-        response.data.forEach((item, index) => {
-          const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : '无'
-          const updatedAt = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('zh-CN') : '无'
-          console.log(`${index + 1}. ${item.name} - 创建: ${createdAt}, 更新: ${updatedAt}`)
-        })
-        console.log('=== 时间戳情况结束 ===')
+
 
         const withTimestamp = response.data.filter(item => item.createdAt || item.updatedAt).length
         const withoutTimestamp = response.data.length - withTimestamp
-        console.log(`总计: ${response.data.length}个食材, 有时间戳: ${withTimestamp}个, 无时间戳: ${withoutTimestamp}个`)
 
         // 统计数据库中的分类信息
         const categories = [...new Set(response.data.map(item => item.category).filter(Boolean))]
@@ -563,7 +562,6 @@ export const useIndexStore = defineStore('index', () => {
         foodData.value = []
       }
     } catch (error) {
-      console.error('加载食材数据失败:', error)
       foodData.value = []
     } finally {
       loading.value = false

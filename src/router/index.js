@@ -14,7 +14,10 @@ const routes = [
     name: 'Computed',
     // component: location,
     component: () => import('@/pages/Computed.vue'),
-    meta: { title: '统计' }
+    meta: { 
+      title: '统计',
+      hideHeader: true
+    }
   },
   {
     path: '/addfoot',

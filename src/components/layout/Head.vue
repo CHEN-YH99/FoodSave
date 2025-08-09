@@ -160,13 +160,9 @@ const initFuse = (items) => {
 // 从MongoDB加载食材数据
 const loadFoodData = async () => {
   try {
-    // console.log('🔗 正在从MongoDB加载食材数据...');
     const response = await axios.get('http://localhost:3001/api/food');
-    // console.log(response.data);
 
     if (response.data && response.data.length > 0) {
-      // console.log(`✅ 成功从MongoDB加载 ${response.data.length} 条食材数据`);
-
       // MongoDB返回的数据已经有_id，转换为id字段以保持兼容性
       data.value = response.data.map(item => ({
         ...item,
@@ -178,7 +174,6 @@ const loadFoodData = async () => {
 
       // 显示数据概览
       const categories = [...new Set(data.value.map(item => item.category))];
-      // console.log('📋 数据分类:', categories.join(', '));
     } else {
       import('vant').then(({ showToast }) => {
         showToast({
@@ -617,7 +612,6 @@ const handleScanSuccess = async (scannedText) => {
       });
     });
   } catch (error) {
-    console.error('扫码添加失败:', error);
     import('vant').then(({ showToast }) => {
       showToast({
         message: '扫码添加失败，请重试',
@@ -687,7 +681,6 @@ const addScannedProductToDatabase = async (productName, originalCode) => {
     
     return result;
   } catch (error) {
-    console.error('添加扫码商品到数据库失败:', error);
     throw error;
   }
 };

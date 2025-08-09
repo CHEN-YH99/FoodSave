@@ -50,9 +50,24 @@ export const useAddFootStore = defineStore('addfoot', () => {
         unit: inputFormData.unit
       };
 
+      // 模拟网络延迟，让用户能看到加载动画（最少显示800ms）
+      const startTime = Date.now();
+      
       // 发送POST请求到后端API
-      const response = await axios.post(`${API_BASE_URL}/food`, foodData);
+      const response = await axios.post(`${API_BASE_URL}/food`, foodData, {
+        timeout: 10000, // 10秒超时
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
       const result = response.data;
+      
+      // 确保加载动画至少显示800ms
+      const elapsedTime = Date.now() - startTime;
+      if (elapsedTime < 800) {
+        await new Promise(resolve => setTimeout(resolve, 800 - elapsedTime));
+      }
       
       // 保存成功后，将食材名称添加到最近使用列表
       if (!recentFoods.value.includes(inputFormData.name.trim())) {
@@ -85,9 +100,32 @@ export const useAddFootStore = defineStore('addfoot', () => {
       return result;
 
     } catch (error) {
-      // 处理错误
-      console.error('保存失败:', error);
-      throw error;
+      // 处理不同类型的错误
+      
+      let errorMessage = '保存失败，请重试';
+      
+      if (error.code === 'ECONNABORTED') {
+        errorMessage = '网络请求超时，请检查网络连接';
+      } else if (error.response) {
+        // 服务器返回错误状态码
+        const status = error.response.status;
+        if (status === 400) {
+          errorMessage = '数据格式错误，请检查输入信息';
+        } else if (status === 500) {
+          errorMessage = '服务器内部错误，请稍后重试';
+        } else if (status === 404) {
+          errorMessage = '服务接口不存在，请联系管理员';
+        }
+      } else if (error.request) {
+        // 网络错误
+        errorMessage = '网络连接失败，请检查网络设置';
+      }
+      
+      // 重新抛出错误，包含自定义错误信息
+      const customError = new Error(errorMessage);
+      customError.originalError = error;
+      throw customError;
+      
     } finally {
       // 无论成功还是失败，都将 isloading 设置为 false
       isloading.value = false;
@@ -141,6 +179,7 @@ export const useAddFootStore = defineStore('addfoot', () => {
     { text: '饮品', value: '饮品' },
     { text: '其他', value: '其他' },
     { text: '熟食', value: '熟食' },
+    { text: '罐头', value: '罐头' },
   ])
 
   const shelfLifeColumns = ref([
@@ -206,6 +245,11 @@ export const useAddFootStore = defineStore('addfoot', () => {
       formData.value.storageLocation!== '' &&
       formData.value.unit!== ''
   })
+
+  // 重置加载状态
+  const resetLoadingState = () => {
+    isloading.value = false
+  }
 
   // 基础方法
   const selectRecentFood = (food) => {
@@ -279,6 +323,7 @@ export const useAddFootStore = defineStore('addfoot', () => {
     // 方法
     onSave,
     calculateExpireDate,
+    resetLoadingState,
     handleinput,
     selectRecentFood,
     handleCategoryClick,

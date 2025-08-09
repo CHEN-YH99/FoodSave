@@ -4,10 +4,12 @@
     <van-nav-bar title="添加食材" left-arrow @click-left="() => router.back()" fixed placeholder>
       <template #right>
         <van-button :loading="store.isloading" text="保存" color="rgba(0,150,5,0.5)" size="small" round @click="onSave"
-          :disabled="!store.isFormValid">
+          :disabled="!store.isFormValid || store.isloading">
         </van-button>
       </template>
     </van-nav-bar>
+
+
 
     <div class="form-container">
       <!-- 食材名称 -->
@@ -140,25 +142,57 @@ import { showToast } from 'vant'
 const router = useRouter()
 const store = useAddFootStore()
 
-// 处理提醒确认（需要在组件中处理 Toast）
-const handleReminderConfirm = ({ selectedValues }) => {
-  showToast(`提醒时间设置为：${selectedValues[0]}`)
-  store.onReminderConfirm({ selectedValues })
-}
-
 // 保存表单
 const onSave = async () => {
   if (!store.isFormValid) {
     showToast('请填写完整信息')
+    // 轻微振动反馈
+    if (navigator.vibrate) {
+      navigator.vibrate(100)
+    }
     return
   }
 
+  if (store.isloading) {
+    return // 防止重复提交
+  }
+
   try {
+    // 开始保存时的触觉反馈
+    if (navigator.vibrate) {
+      navigator.vibrate(50)
+    }
+
     await store.onSave(store.formData)
-    showToast({ type: 'success', message: '食材添加成功' })
-    router.back()
+
+    // 成功时的触觉反馈
+    if (navigator.vibrate) {
+      navigator.vibrate([100, 50, 100])
+    }
+
+    showToast({
+      type: 'success',
+      message: '食材添加成功',
+      duration: 1500
+    })
+
+    // 延迟一下再跳转，让用户看到成功提示
+    setTimeout(() => {
+      router.back()
+    }, 800)
   } catch (error) {
-    showToast({ type: 'fail', message: '保存失败，请重试' })
+    // 失败时的触觉反馈
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 100, 200])
+    }
+
+    // 使用 store 返回的详细错误信息
+    const errorMessage = error.message || '保存失败，请重试'
+    showToast({
+      type: 'fail',
+      message: errorMessage,
+      duration: 3000 // 错误信息显示3秒
+    })
   }
 }
 
@@ -281,6 +315,12 @@ const onSave = async () => {
 :deep(.van-button--small) {
   padding: 0 12px;
   height: 32px;
+  transition: all 0.3s ease;
+
+  &.van-button--loading {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
 }
 
 :deep(.van-stepper) {
@@ -289,4 +329,6 @@ const onSave = async () => {
     margin: 0 8px;
   }
 }
+
+
 </style>
