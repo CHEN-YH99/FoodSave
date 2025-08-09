@@ -56,7 +56,7 @@
               <span class="required">*</span>
               保质期
             </div>
-            <van-field v-model="store.formData.shelfLife" placeholder="输入或选择保质期" clearable>
+            <van-field v-model="store.formData.shelfLife" placeholder="点击输入" clearable>
               <template #button>
                 <van-button size="small" type="primary" plain @click="store.showShelfLifePicker = true">
                   选择
@@ -68,45 +68,35 @@
       </div>
 
       <!-- 存储位置 -->
-      <!-- <div class="form-section">
+      <div class="form-section">
         <div class="section-title">
           <span class="required">*</span>
           存储位置
         </div>
-        <van-field v-model="formData.storageLocation" placeholder="选择存储位置" readonly is-link
-          @click="showStoragePicker = true">
+        <van-field v-model="store.formData.storageLocation" placeholder="选择存储位置" readonly is-link
+          @click="store.showStoragePicker = true">
           <template #right-icon>
-            <van-icon name="star" v-if="formData.storageLocation.includes('★')" />
+            <van-icon name="star" v-if="store.formData.storageLocation.includes('★')" />
           </template>
         </van-field>
-      </div> -->
+      </div>
 
       <!-- 数量和单位 -->
-      <!-- <div class="form-section">
+      <div class="form-section">
         <div class="quantity-row">
           <div class="quantity-item">
             <div class="section-title">数量</div>
             <div class="stepper-container">
-              <van-stepper v-model="formData.quantity" min="0" step="1" integer />
+              <van-stepper v-model="store.formData.quantity" min="0" step="1" integer />
             </div>
           </div>
           <div class="quantity-item">
             <div class="section-title">单位</div>
-            <van-field v-model="formData.unit" placeholder="选择单位" readonly is-link @click="showUnitPicker = true" />
+            <van-field v-model="store.formData.unit" placeholder="选择单位" readonly is-link
+              @click="store.showUnitPicker = true" />
           </div>
         </div>
-      </div> -->
-
-      <!-- 临期提醒 -->
-      <!-- <div class="form-section">
-        <div class="section-title">临期提醒</div>
-        <div class="reminder-row">
-          <span class="reminder-text">3天后</span>
-          <van-button type="default" size="small" plain @click="showReminderPicker = true">
-            可自定义 <van-icon name="arrow" />
-          </van-button>
-        </div>
-      </div> -->
+      </div>
     </div>
 
     <!-- 选择器弹窗 -->
@@ -139,42 +129,36 @@
       <van-picker title="选择单位" :columns="store.unitColumns" @confirm="store.onUnitConfirm"
         @cancel="store.showUnitPicker = false" />
     </van-popup>
-
-    <!-- 提醒时间选择器 -->
-    <van-popup v-model:show="store.showReminderPicker" position="bottom">
-      <van-picker title="选择提醒时间" :columns="store.reminderColumns" @confirm="handleReminderConfirm"
-        @cancel="store.showReminderPicker = false" />
-    </van-popup>
   </div>
 </template>
 
 <script setup>
 import { useAddFootStore } from '../store/addfoot.js'
 import { useRouter } from 'vue-router'
-import { Toast } from 'vant'
+import { showToast } from 'vant'
 
 const router = useRouter()
 const store = useAddFootStore()
 
 // 处理提醒确认（需要在组件中处理 Toast）
 const handleReminderConfirm = ({ selectedValues }) => {
-  Toast(`提醒时间设置为：${selectedValues[0]}`)
+  showToast(`提醒时间设置为：${selectedValues[0]}`)
   store.onReminderConfirm({ selectedValues })
 }
 
 // 保存表单
 const onSave = async () => {
   if (!store.isFormValid) {
-    Toast('请填写完整信息')
+    showToast('请填写完整信息')
     return
   }
 
   try {
     await store.onSave(store.formData)
-    Toast.success('食材添加成功')
+    showToast({ type: 'success', message: '食材添加成功' })
     router.back()
   } catch (error) {
-    Toast.fail('保存失败，请重试')
+    showToast({ type: 'fail', message: '保存失败，请重试' })
   }
 }
 

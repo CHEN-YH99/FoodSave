@@ -12,7 +12,7 @@
       </van-button>
       <van-button class="warning" round @click="handleLowStockClick" :loading="loading">
         <van-icon name="shop-o" />
-        库存不足: {{ loading ? '...' : store.lowstock }}项
+        可存放: {{ loading ? '...' : store.lowstock }}项
       </van-button>
     </div>
 
@@ -100,11 +100,12 @@
           <div class="header-left">
             <van-icon name="clock-o" color="rgb(0, 150, 5)" size="25" />
             <span class="recently-title">最近添加</span>
+            <span class="recently-subtitle">（最近7天）</span>
           </div>
         </div>
 
         <div class="recently-list">
-          <van-cell-group :border="false">
+          <van-cell-group :border="false" v-if="store.recentlyAdded.length > 0">
             <van-cell v-for="item in store.recentlyAdded" :key="item.id"
               @click="() => handleRecentItemClick(item, router)" clickable class="recent-item">
               <template #icon>
@@ -115,7 +116,7 @@
                   <div class="item-name">{{ item.name }}</div>
                   <div class="item-expiry" :style="{ color: store.getExpiryColor(item.expiryDays) }">
                     <van-icon name="clock-o" size="12" />
-                    {{ item.expiryDays }}天后过期
+                    {{ item.expiryDays <= 0 ? '已过期' : item.expiryDays === 1 ? '明天过期' : `${item.expiryDays}天后过期` }}
                   </div>
                 </div>
               </template>
@@ -124,10 +125,22 @@
               </template>
             </van-cell>
           </van-cell-group>
+          
+          <!-- 空状态 -->
+          <div v-else class="empty-state">
+            <van-empty description="最近7天暂无添加的食材">
+              <template #image>
+                <van-icon name="clock-o" size="60" color="#ddd" />
+              </template>
+            </van-empty>
+          </div>
         </div>
 
-        <div class="view-all" @click="handleViewAllClick">
-          <span class="view-all-text">查看全部</span>
+        <div class="view-all" @click="handleViewAllClick" v-if="store.allRecentSevenDaysCount > 4">
+          <span class="view-all-text">
+            {{ store.showAllRecentlyAdded ? '收起' : `查看全部 (${store.allRecentSevenDaysCount}个)` }}
+          </span>
+          <van-icon :name="store.showAllRecentlyAdded ? 'arrow-up' : 'arrow-down'" size="14" color="#009605" />
         </div>
       </div>
     </div>
@@ -650,6 +663,13 @@ onMounted(() => {
         font-weight: 600;
         color: #2c3e50;
       }
+
+      .recently-subtitle {
+        margin-left: 4px;
+        font-size: 12px;
+        color: #999;
+        font-weight: 400;
+      }
     }
   }
 
@@ -658,6 +678,20 @@ onMounted(() => {
 
     :deep(.van-cell-group) {
       background: transparent;
+    }
+
+    .empty-state {
+      padding: 20px 0;
+      text-align: center;
+      
+      :deep(.van-empty) {
+        padding: 16px 0;
+      }
+      
+      :deep(.van-empty__description) {
+        color: #999;
+        font-size: 14px;
+      }
     }
 
     .recent-item {
@@ -709,24 +743,33 @@ onMounted(() => {
   }
 
   .view-all {
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     padding: 12px 0;
     cursor: pointer;
     border-radius: 8px;
-    transition: background-color 0.2s;
+    transition: all 0.3s ease;
 
     &:hover {
       background: #f8f9fa;
+      transform: translateY(-1px);
     }
 
     &:active {
       background: #e9ecef;
+      transform: translateY(0);
     }
 
     .view-all-text {
       color: rgb(0, 150, 5);
       font-size: 15px;
       font-weight: 600;
+    }
+
+    .van-icon {
+      transition: transform 0.3s ease;
     }
   }
 }

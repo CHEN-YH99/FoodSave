@@ -15,9 +15,25 @@ const foodSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  purchaseDate: {
+    type: String,
+    required: true
+  },
+  shelfLife: {
+    type: String,
+    required: true
+  },
   expireDate: {
     type: String,
     required: true
+  },
+  quantity: {
+    type: Number,
+    default: 1
+  },
+  unit: {
+    type: String,
+    default: '千克'
   },
   synonyms: [{
     type: String

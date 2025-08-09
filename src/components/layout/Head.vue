@@ -599,23 +599,167 @@ const handleScanSuccess = async (scannedText) => {
   // 停止扫描
   isScanning.value = false;
 
-  // 处理扫描结果 - 这里可以根据实际需求处理
-  const searchTerm = extractSearchTerm(scannedText);
-  searchvalue.value = searchTerm;
-
+  // 处理扫描结果 - 提取商品信息
+  const productName = extractSearchTerm(scannedText);
+  
   // 关闭扫码弹窗
   closeScanPopup();
 
-  // 执行MongoDB搜索
-  await search();
-
-  // 显示成功提示
-  import('vant').then(({ showToast }) => {
-    showToast({
-      message: `扫描成功：${searchTerm}`,
-      type: 'success'
+  try {
+    // 将扫描到的商品添加到数据库
+    await addScannedProductToDatabase(productName, scannedText);
+    
+    // 显示成功提示
+    import('vant').then(({ showToast }) => {
+      showToast({
+        message: `扫码添加成功：${productName}`,
+        type: 'success'
+      });
     });
-  });
+  } catch (error) {
+    console.error('扫码添加失败:', error);
+    import('vant').then(({ showToast }) => {
+      showToast({
+        message: '扫码添加失败，请重试',
+        type: 'fail'
+      });
+    });
+  }
+};
+
+// 将扫描到的商品添加到数据库
+const addScannedProductToDatabase = async (productName, originalCode) => {
+  try {
+    // 根据商品名称推断分类
+    const category = inferCategoryFromProductName(productName);
+    
+    // 计算默认过期日期（根据分类设置不同的保质期）
+    const shelfLifeDays = getDefaultShelfLife(category);
+    const purchaseDate = new Date().toLocaleDateString('zh-CN', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).replace(/\//g, '/');
+    
+    const expireDate = new Date();
+    expireDate.setDate(expireDate.getDate() + shelfLifeDays);
+    const expireDateStr = expireDate.toLocaleDateString('zh-CN', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).replace(/\//g, '/');
+
+    // 准备要发送的数据
+    const foodData = {
+      name: productName,
+      category: category,
+      storageLocation: getDefaultStorageLocation(category),
+      purchaseDate: purchaseDate,
+      shelfLife: `${shelfLifeDays}天`,
+      expireDate: expireDateStr,
+      quantity: 1,
+      unit: getDefaultUnit(category),
+      description: `通过扫码添加：${originalCode}`
+    };
+
+    // 发送POST请求到后端API
+    const response = await fetch('http://localhost:3001/api/food', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(foodData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    // 触发全局事件，通知其他页面数据已更新
+    window.dispatchEvent(new CustomEvent('foodDataUpdated', { 
+      detail: { 
+        action: 'scan_add', 
+        food: result 
+      } 
+    }));
+    
+    return result;
+  } catch (error) {
+    console.error('添加扫码商品到数据库失败:', error);
+    throw error;
+  }
+};
+
+// 根据商品名称推断分类
+const inferCategoryFromProductName = (productName) => {
+  const categoryKeywords = {
+    '蔬菜': ['菜', '萝卜', '白菜', '青菜', '菠菜', '韭菜', '芹菜', '豆角', '茄子', '黄瓜', '西红柿', '番茄', '土豆', '洋葱', '大蒜', '生姜'],
+    '水果': ['苹果', '香蕉', '橙子', '橘子', '梨', '葡萄', '草莓', '西瓜', '哈密瓜', '桃子', '李子', '樱桃', '柠檬', '柚子', '猕猴桃'],
+    '肉类': ['肉', '牛肉', '猪肉', '鸡肉', '鸭肉', '羊肉', '鱼', '虾', '蟹', '鸡翅', '排骨', '牛排', '火腿', '香肠', '腊肉'],
+    '海鲜': ['鱼', '虾', '蟹', '贝', '海带', '紫菜', '鲍鱼', '扇贝', '海参', '鱿鱼', '章鱼', '龙虾', '生蚝'],
+    '主食': ['米', '面', '面包', '面条', '馒头', '包子', '饺子', '蛋', '鸡蛋', '鸭蛋', '鹌鹑蛋', '面粉', '大米'],
+    '调料': ['盐', '糖', '醋', '酱油', '料酒', '胡椒', '花椒', '八角', '桂皮', '香叶', '味精', '鸡精', '蚝油', '生抽', '老抽'],
+    '饮品': ['牛奶', '酸奶', '奶酪', '黄油', '饮料', '果汁', '茶', '咖啡', '可乐', '雪碧', '矿泉水', '豆浆'],
+    '其他': ['罐头', '午餐肉', '鱼罐头', '水果罐头']
+  };
+
+  for (const [category, keywords] of Object.entries(categoryKeywords)) {
+    if (keywords.some(keyword => productName.includes(keyword))) {
+      return category;
+    }
+  }
+  
+  return '其他';
+};
+
+// 根据分类获取默认保质期（天数）
+const getDefaultShelfLife = (category) => {
+  const shelfLifeMap = {
+    '蔬菜': 7,
+    '水果': 10,
+    '肉类': 3,
+    '海鲜': 2,
+    '主食': 30,
+    '调料': 365,
+    '饮品': 30,
+    '其他': 30
+  };
+  
+  return shelfLifeMap[category] || 7;
+};
+
+// 根据分类获取默认存储位置
+const getDefaultStorageLocation = (category) => {
+  const storageMap = {
+    '蔬菜': '冰箱中层冷藏室',
+    '水果': '冰箱中层冷藏室',
+    '肉类': '冰箱下层冷冻室 ★',
+    '海鲜': '冰箱下层冷冻室 ★',
+    '主食': '常温储存',
+    '调料': '阴凉干燥处',
+    '饮品': '冰箱上层冷藏室',
+    '其他': '常温储存'
+  };
+  
+  return storageMap[category] || '常温储存';
+};
+
+// 根据分类获取默认单位
+const getDefaultUnit = (category) => {
+  const unitMap = {
+    '蔬菜': '斤',
+    '水果': '斤',
+    '肉类': '斤',
+    '海鲜': '斤',
+    '主食': '包',
+    '调料': '瓶',
+    '饮品': '瓶',
+    '其他': '个'
+  };
+  
+  return unitMap[category] || '个';
 };
 
 // 验证是否为有效的二维码或条形码

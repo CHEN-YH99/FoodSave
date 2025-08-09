@@ -53,9 +53,23 @@ export const useIndexStore = defineStore('index', () => {
   // 路由数据缓存 - 用于安全传递数据，避免敏感信息暴露在URL中
   const routeDataCache = ref(new Map())
 
+  // 监听食材数据更新事件
+  const setupEventListeners = () => {
+    window.addEventListener('foodDataUpdated', (event) => {
+      // 当接收到食材数据更新通知时，重新加载数据
+      loadFoodData()
+    })
+  }
+
+  // 在store初始化时设置事件监听器
+  setupEventListeners()
+
   // 分类展开/收起状态
   const showAllCategories = ref(false)
   const maxVisibleCategories = 6 // 最多显示6个分类
+
+  // 最近添加列表展开/收起状态
+  const showAllRecentlyAdded = ref(false)
 
   // 已取出食材列表 - 保留最近7天的记录，从localStorage中恢复数据
   const takenOutFoods = ref(loadTakenOutFoodsFromStorage())
@@ -175,6 +189,13 @@ export const useIndexStore = defineStore('index', () => {
       icon: 'hot-o',
       bgColor: '#FFF2E8',
       iconColor: '#FA8C16'
+    },
+    {
+      id: 9,
+      name: '其他',
+      icon: 'hot-o',
+      bgColor: '#FFF2E8',
+      iconColor: '#FA8C16'
     }
   ])
 
@@ -263,20 +284,72 @@ export const useIndexStore = defineStore('index', () => {
     }
   })
 
-  // 获取最近添加的食材（按添加时间排序，取前4个）
-  const recentlyAdded = computed(() => {
-    const sortedData = [...foodData.value]
-      .sort((a, b) => new Date(b.createdAt || b.addedDate || Date.now()) - new Date(a.createdAt || a.addedDate || Date.now()))
-      .slice(0, 4)
+  // 获取最近7天的所有食材（用于内部过滤）
+  const getAllRecentSevenDays = () => {
+    if (!foodData.value || foodData.value.length === 0) {
+      return []
+    }
 
-    return sortedData.map(item => ({
-      id: item.id,
-      name: item.name,
-      image: getItemImage(item.name, item.category),
-      expiryDays: calculateExpiryDays(item.expireDate),
-      category: item.category,
-      expireDate: item.expireDate
-    }))
+    // 计算7天前的日期
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    sevenDaysAgo.setHours(0, 0, 0, 0)
+
+    // 过滤出最近7天添加的食材
+    const recentData = foodData.value.filter(item => {
+      // 检查是否有有效的创建时间
+      if (!item.createdAt && !item.updatedAt) {
+        return false // 没有时间戳的数据不显示
+      }
+
+      // 优先使用createdAt，如果没有则使用updatedAt
+      const timeField = item.createdAt || item.updatedAt
+      const createdDate = new Date(timeField)
+
+      // 检查日期是否有效
+      if (isNaN(createdDate.getTime())) {
+        return false
+      }
+
+      createdDate.setHours(0, 0, 0, 0)
+      return createdDate >= sevenDaysAgo
+    })
+
+    // 按添加时间排序，最新的在前面
+    return recentData
+      .sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.updatedAt)
+        const timeB = new Date(b.createdAt || b.updatedAt)
+        return timeB - timeA
+      })
+      .map(item => ({
+        id: item._id || item.id,
+        name: item.name,
+        image: getItemImage(item.name, item.category),
+        expiryDays: calculateExpiryDays(item.expireDate),
+        category: item.category,
+        expireDate: item.expireDate,
+        storageLocation: item.storageLocation,
+        createdAt: item.createdAt,
+        addedDate: new Date(item.createdAt || item.updatedAt).toLocaleDateString('zh-CN')
+      }))
+  }
+
+  // 获取最近添加的食材（根据展开状态显示不同数量）
+  const recentlyAdded = computed(() => {
+    const allRecentData = getAllRecentSevenDays()
+
+    if (allRecentData.length === 0) {
+      return []
+    }
+
+    // 如果展开，显示所有；否则只显示前4个
+    return showAllRecentlyAdded.value ? allRecentData : allRecentData.slice(0, 4)
+  })
+
+  // 获取所有最近7天的食材数量
+  const allRecentSevenDaysCount = computed(() => {
+    return getAllRecentSevenDays().length
   })
 
   // 工具函数
@@ -464,6 +537,19 @@ export const useIndexStore = defineStore('index', () => {
           id: item._id || item.id
         }))
 
+        // 调试：显示所有食材的时间戳情况
+        console.log('=== 数据库中所有食材的时间戳情况 ===')
+        response.data.forEach((item, index) => {
+          const createdAt = item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : '无'
+          const updatedAt = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString('zh-CN') : '无'
+          console.log(`${index + 1}. ${item.name} - 创建: ${createdAt}, 更新: ${updatedAt}`)
+        })
+        console.log('=== 时间戳情况结束 ===')
+
+        const withTimestamp = response.data.filter(item => item.createdAt || item.updatedAt).length
+        const withoutTimestamp = response.data.length - withTimestamp
+        console.log(`总计: ${response.data.length}个食材, 有时间戳: ${withTimestamp}个, 无时间戳: ${withoutTimestamp}个`)
+
         // 统计数据库中的分类信息
         const categories = [...new Set(response.data.map(item => item.category).filter(Boolean))]
 
@@ -477,6 +563,7 @@ export const useIndexStore = defineStore('index', () => {
         foodData.value = []
       }
     } catch (error) {
+      console.error('加载食材数据失败:', error)
       foodData.value = []
     } finally {
       loading.value = false
@@ -603,9 +690,14 @@ export const useIndexStore = defineStore('index', () => {
     })
   }
 
-  // 查看全部点击处理
+  // 切换最近添加列表的展开/收起状态
+  const toggleRecentlyAddedExpansion = () => {
+    showAllRecentlyAdded.value = !showAllRecentlyAdded.value
+  }
+
+  // 查看全部点击处理（切换展开/收起状态）
   const handleViewAllClick = () => {
-    // 查看全部处理逻辑
+    toggleRecentlyAddedExpansion()
   }
 
   // 过期预警点击处理
@@ -763,6 +855,7 @@ export const useIndexStore = defineStore('index', () => {
     foodCategories,
     showAllCategories,
     maxVisibleCategories,
+    showAllRecentlyAdded,
 
     // 计算属性
     expired,
@@ -770,6 +863,7 @@ export const useIndexStore = defineStore('index', () => {
     lowstock,
     recommendData,
     recentlyAdded,
+    allRecentSevenDaysCount,
     getExpiringIngredient,
     getActualCategories,
     visibleCategories,
@@ -783,6 +877,7 @@ export const useIndexStore = defineStore('index', () => {
     getCategoryDescription,
     debugCategoryFoods,
     toggleCategoriesExpansion,
+    toggleRecentlyAddedExpansion,
 
     // 异步操作
     loadFoodData,
@@ -808,7 +903,10 @@ export const useIndexStore = defineStore('index', () => {
     handleViewAllClick,
     handleExpiredClick,
     handleExpiryWarningClick,
-    handleLowStockClick
+    handleLowStockClick,
+
+    // 事件监听器设置
+    setupEventListeners
   }
 }, {
   // Pinia store选项

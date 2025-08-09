@@ -1,25 +1,93 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
+
+// 配置axios基础URL
+const API_BASE_URL = 'http://localhost:3001/api'
 
 export const useAddFootStore = defineStore('addfoot', () => {
   // 加载状态
   const isloading = ref(false)
 
-  // 保存表单数据
-  const onSave = async (formData) => {
+  // 计算过期日期
+  const calculateExpireDate = (purchaseDate, shelfLife) => {
+    const purchase = new Date(purchaseDate);
+    let days = 0;
+    
+    if (shelfLife.includes('天')) {
+      days = parseInt(shelfLife);
+    } else if (shelfLife.includes('年')) {
+      days = parseInt(shelfLife) * 365;
+    }
+    
+    const expireDate = new Date(purchase);
+    expireDate.setDate(expireDate.getDate() + days);
+    
+    return expireDate.toLocaleDateString('zh-CN', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).replace(/\//g, '/');
+  }
+
+  // 保存表单数据到 MongoDB
+  const onSave = async (inputFormData) => {
     try {
       isloading.value = true;
+      
+      // 计算过期日期
+      const expireDate = calculateExpireDate(inputFormData.purchaseDate, inputFormData.shelfLife);
+      
+      // 准备要发送的数据
+      const foodData = {
+        name: inputFormData.name.trim(),
+        category: inputFormData.category,
+        storageLocation: inputFormData.storageLocation,
+        purchaseDate: inputFormData.purchaseDate,
+        shelfLife: inputFormData.shelfLife,
+        expireDate: expireDate,
+        quantity: inputFormData.quantity,
+        unit: inputFormData.unit
+      };
 
-      // 模拟保存数据的异步操作（比如发送到服务器）
-      await new Promise(resolve => setTimeout(resolve, 2000)); // 模拟2秒的网络请求
+      // 发送POST请求到后端API
+      const response = await axios.post(`${API_BASE_URL}/food`, foodData);
+      const result = response.data;
+      
+      // 保存成功后，将食材名称添加到最近使用列表
+      if (!recentFoods.value.includes(inputFormData.name.trim())) {
+        recentFoods.value.unshift(inputFormData.name.trim());
+        // 限制最近使用列表的长度
+        if (recentFoods.value.length > 10) {
+          recentFoods.value = recentFoods.value.slice(0, 10);
+        }
+      }
+      
+      // 重置store中的表单数据
+      Object.assign(formData.value, {
+        name: '',
+        category: '',
+        purchaseDate: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/'),
+        shelfLife: '',
+        storageLocation: '',
+        quantity: 1,
+        unit: '千克'
+      });
 
-      // 这里可以添加实际的保存逻辑
-      console.log('保存的数据:', formData);
+      // 触发全局事件，通知其他页面数据已更新
+      window.dispatchEvent(new CustomEvent('foodDataUpdated', { 
+        detail: { 
+          action: 'add', 
+          food: result 
+        } 
+      }));
+      
+      return result;
 
     } catch (error) {
       // 处理错误
       console.error('保存失败:', error);
-      throw error; // 重新抛出错误，让组件可以处理
+      throw error;
     } finally {
       // 无论成功还是失败，都将 isloading 设置为 false
       isloading.value = false;
@@ -54,7 +122,7 @@ export const useAddFootStore = defineStore('addfoot', () => {
   const showShelfLifePicker = ref(false)
   const showStoragePicker = ref(false)
   const showUnitPicker = ref(false)
-  const showReminderPicker = ref(false)
+  // const showReminderPicker = ref(false)
 
   // 日期相关
   const today = new Date()
@@ -71,7 +139,8 @@ export const useAddFootStore = defineStore('addfoot', () => {
     { text: '主食', value: '主食' },
     { text: '调料', value: '调料' },
     { text: '饮品', value: '饮品' },
-    { text: '其他', value: '其他' }
+    { text: '其他', value: '其他' },
+    { text: '熟食', value: '熟食' },
   ])
 
   const shelfLifeColumns = ref([
@@ -93,30 +162,49 @@ export const useAddFootStore = defineStore('addfoot', () => {
   ])
 
   const storageColumns = ref([
-    '冰箱上层冷藏室',
-    '冰箱中层冷藏室',
-    '冰箱下层冷冻室 ★',
-    '冰箱门储物格',
-    '常温储存',
-    '阴凉干燥处',
-    '冷冻室',
-    '保鲜盒'
+    {text: '冰箱上层冷藏室', value: '冰箱上层冷藏室'},
+    {text: '冰箱中层冷藏室', value: '冰箱中层冷藏室'},
+    {text: '冰箱下层冷冻室 ★', value: '冰箱下层冷冻室 ★'},
+    {text: '冰箱门储物格', value: '冰箱门储物格'},
+    {text: '常温储存', value: '常温储存'},
+    {text: '阴凉干燥处', value: '阴凉干燥处'},
+    {text: '冷冻室', value: '冷冻室'},
+    {text: '保鲜盒', value: '保鲜盒'}
   ])
 
   const unitColumns = ref([
-    '个', '只', '条', '根', '片', '块', '包', '袋', '盒', '瓶', '罐', '千克', '克', '斤', '两', '升', '毫升'
+    {text: '斤', value: '斤'},
+    {text: '两', value: '两'},
+    {text: '升', value: '升'},
+    {text: '毫升', value: '毫升'},
+    {text: '个', value: '个'},
+    {text: '只', value: '只'},
+    {text: '条', value: '条'},
+    {text: '根', value: '根'},
+    {text: '片', value: '片'},
+    {text: '块', value: '块'},
+    {text: '包', value: '包'},
+    {text: '袋', value: '袋'},
+    {text: '盒', value: '盒'},
+    {text: '瓶', value: '瓶'},
+    {text: '罐', value: '罐'},
+    {text: '千克', value: '千克'},
+    {text: '克', value: '克'},
+    
   ])
 
   const reminderColumns = ref([
     '1天后', '2天后', '3天后', '5天后', '7天后', '10天后', '15天后', '30天后'
   ])
 
-  // 表单验证
+  // 表单验证(信息栏不能为空, 否则无法保存)
   const isFormValid = computed(() => {
     return formData.value.name.trim() !== '' &&
       formData.value.category !== '' &&
       formData.value.purchaseDate !== '' &&
-      formData.value.shelfLife !== ''
+      formData.value.shelfLife !== '' &&
+      formData.value.storageLocation!== '' &&
+      formData.value.unit!== ''
   })
 
   // 基础方法
@@ -157,9 +245,9 @@ export const useAddFootStore = defineStore('addfoot', () => {
     showUnitPicker.value = false
   }
 
-  const onReminderConfirm = ({ selectedValues }) => {
-    showReminderPicker.value = false
-  }
+  // const onReminderConfirm = ({ selectedValues }) => {
+  //   showReminderPicker.value = false
+  // }
 
   return {
     // 状态数据
@@ -174,7 +262,7 @@ export const useAddFootStore = defineStore('addfoot', () => {
     showShelfLifePicker,
     showStoragePicker,
     showUnitPicker,
-    showReminderPicker,
+    // showReminderPicker,
 
     // 日期相关
     currentDate,
@@ -190,6 +278,7 @@ export const useAddFootStore = defineStore('addfoot', () => {
 
     // 方法
     onSave,
+    calculateExpireDate,
     handleinput,
     selectRecentFood,
     handleCategoryClick,
@@ -198,6 +287,5 @@ export const useAddFootStore = defineStore('addfoot', () => {
     onShelfLifeConfirm,
     onStorageConfirm,
     onUnitConfirm,
-    onReminderConfirm
   }
 })
