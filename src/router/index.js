@@ -30,11 +30,11 @@ const routes = [
     }
   },
   {
-    path: '/remind',
-    name: 'Remind',
+    path: '/foodmap',
+    name: 'FoodMap',
     // component: location,
-    component: () => import('@/pages/Remind.vue'),
-    meta: { title: '地图' }
+    component: () => import('@/pages/FoodMap.vue'),
+    meta: { title: '存放位置' }
   },
   {
     path: '/mine',

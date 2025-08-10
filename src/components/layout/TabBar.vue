@@ -9,7 +9,7 @@ const routeToIndex = {
   '/': 0,
   '/computed': 1,
   '/addfoot': 2,
-  '/remind': 3,
+  '/foodmap': 3,
   '/mine': 4
 };
 
@@ -35,7 +35,7 @@ const active = computed({
     if (routeName === 'Addfoot') {
       return 2;
     }
-    if (routeName === 'Remind') {
+    if (routeName === 'FoodMap') {
       return 3;
     }
     if (routeName === 'Mine') {
@@ -49,7 +49,7 @@ const active = computed({
     if (routePath.startsWith('/addfoot')) {
       return 2;
     }
-    if (routePath.startsWith('/remind')) {
+    if (routePath.startsWith('/foodmap')) {
       return 3;
     }
     if (routePath.startsWith('/mine')) {
@@ -75,7 +75,7 @@ watch(() => route.path, (newPath, oldPath) => {
     <van-tabbar-item icon="home-o" to="/">首页</van-tabbar-item>
     <van-tabbar-item icon="chart-trending-o" to="/computed">统计</van-tabbar-item>
     <van-tabbar-item icon="add" to="/addfoot">添加</van-tabbar-item>
-    <van-tabbar-item icon="bell" to="/remind">提醒</van-tabbar-item>
+    <van-tabbar-item icon="guide-o" to="/foodmap">存放位置</van-tabbar-item>
     <van-tabbar-item icon="user-o" to="/mine">我的</van-tabbar-item>
   </van-tabbar>
 </template>

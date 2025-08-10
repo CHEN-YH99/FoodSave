@@ -94,7 +94,7 @@
 
       <!-- 生成月度报告按钮 -->
       <div class="report-section">
-        <van-button type="primary" size="large" round block @click="generateReport" :loading="reportLoading">
+        <van-button color="rgb(0,150,5)" size="large" round block @click="generateReport" :loading="reportLoading">
           <van-icon name="description" />
           生成月度报告
         </van-button>
@@ -506,7 +506,7 @@ onUnmounted(() => {
 }
 
 .waste-card {
-  background: linear-gradient(135deg, rgba(0, 150, 0, 0.2) 0%, #bff8ca 100%);
+  background: linear-gradient(135deg, rgba(0, 150, 0, 0.4) 0%, #bff8ca 100%);
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
