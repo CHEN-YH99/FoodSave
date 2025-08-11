@@ -34,7 +34,10 @@ const routes = [
     name: 'FoodMap',
     // component: location,
     component: () => import('@/pages/FoodMap.vue'),
-    meta: { title: '存放位置' }
+    meta: { 
+      title: '存放位置',
+      hideHeader: true 
+    }
   },
   {
     path: '/mine',
