@@ -44,7 +44,11 @@ const routes = [
     name: 'Mine',
     // component: mine,
     component: () => import('@/pages/Mine.vue'),
-    meta: { title: '我的' }
+    meta: { 
+      title: '我的',
+      hideHeader: true,
+      hideTabBar: true
+    }
   },
   {
     path: '/food-detail/:id',

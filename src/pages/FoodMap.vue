@@ -3,13 +3,13 @@
     <div id="webgl" ref="canvasContainer" class="food-map"></div>
     <div class="loading" v-if="loading">加载冰箱模型中...</div>
     <div class="error" v-if="error">{{ error }}</div>
-    <!-- 收纳式提示面板 -->
+    <!-- 收纳式提示面板 - 左侧 -->
     <div class="controls-hint" :class="{ 'collapsed': isHintCollapsed }">
-      <div class="hint-header" @click="toggleHint">
-        <div class="hint-title">🏠 智能厨房</div>
-        <div class="collapse-icon">{{ isHintCollapsed ? '▶' : '▼' }}</div>
+      <div class="hint-toggle" @click="toggleHint">
+        <div class="toggle-icon">{{ isHintCollapsed ? '▶' : '◀' }}</div>
       </div>
       <div class="hint-content" v-show="!isHintCollapsed">
+        <div class="hint-title">🏠 智能厨房</div>
         <div class="hint-item">
           <span class="hint-icon">🖱️</span>
           <span>拖拽旋转视角</span>
@@ -37,16 +37,70 @@
       </div>
     </div>
 
-    <!-- 设备选择器 -->
-    <div class="device-selector">
-      <div class="selector-title">选择设备</div>
-      <div class="selector-buttons">
-        <button class="selector-btn" :class="{ active: currentDevice === 'fridge' }" @click="switchDevice('fridge')">
-          🧊 冰箱
-        </button>
-        <button class="selector-btn" :class="{ active: currentDevice === 'freezer' }" @click="switchDevice('freezer')">
-          ❄️ 冰柜
-        </button>
+    <!-- 设备选择器 - 右侧 -->
+    <div class="device-selector" :class="{ 'collapsed': isSelectorCollapsed }">
+      <div class="selector-toggle" @click="toggleSelector">
+        <div class="toggle-icon">{{ isSelectorCollapsed ? '◀' : '▶' }}</div>
+      </div>
+      <div class="selector-content" v-show="!isSelectorCollapsed">
+        <div class="selector-title">选择设备</div>
+        <div class="selector-buttons">
+          <button class="selector-btn" :class="{ active: currentDevice === 'fridge' }" @click="switchDevice('fridge')">
+            🧊 冰箱
+          </button>
+          <button class="selector-btn" :class="{ active: currentDevice === 'freezer' }"
+            @click="switchDevice('freezer')">
+            ❄️ 冰柜
+          </button>
+        </div>
+        <div class="food-count" v-if="foodData.length > 0">
+          <div class="count-item">
+            <span class="count-icon">📦</span>
+            <span>共 {{ foodData.length }} 种食物</span>
+          </div>
+          <button class="refresh-btn" @click="loadFoodData" title="刷新食物数据">
+            🔄
+          </button>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 食物信息面板 -->
+    <div class="food-info-panel" v-if="selectedFood" @click="selectedFood = null">
+      <div class="food-info-content" @click.stop>
+        <div class="food-info-header">
+          <h3>{{ selectedFood.name }}</h3>
+          <button class="close-btn" @click="selectedFood = null">×</button>
+        </div>
+        <div class="food-info-body">
+          <div class="info-item">
+            <span class="info-label">类别:</span>
+            <span class="info-value">{{ selectedFood.category }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">存储位置:</span>
+            <span class="info-value">{{ selectedFood.storageLocation }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">购买日期:</span>
+            <span class="info-value">{{ selectedFood.purchaseDate }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">过期时间:</span>
+            <span class="info-value" :class="{ 'expired': isExpired(selectedFood.expireDate) }">
+              {{ selectedFood.expireDate }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">数量:</span>
+            <span class="info-value">{{ selectedFood.quantity }} {{ selectedFood.unit }}</span>
+          </div>
+          <div class="info-item" v-if="selectedFood.description">
+            <span class="info-label">描述:</span>
+            <span class="info-value">{{ selectedFood.description }}</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -64,7 +118,9 @@ export default {
     const loading = ref(true)
     const error = ref('')
     const isHintCollapsed = ref(false)
+    const isSelectorCollapsed = ref(false)
     const currentDevice = ref('fridge')
+    const selectedFood = ref(null)
 
     let scene, camera, renderer, controls
     let animationId
@@ -81,9 +137,15 @@ export default {
     let originalCameraTarget = new THREE.Vector3()
     let isInspectMode = false
 
+    // 食物数据和3D对象
+    const foodData = ref([])
+    const foodObjects = ref(new Map()) // 存储食物3D对象的映射
+    let dynamicFoodGroup = null // 动态食物组
+
     onMounted(() => {
       initThreeJS()
       loadFridgeModel()
+      loadFoodData()
     })
 
     const initThreeJS = () => {
@@ -247,6 +309,15 @@ export default {
 
         raycaster.setFromCamera(mouse, camera)
 
+        // 首先检查食物交互
+        if (dynamicFoodGroup) {
+          const foodIntersects = raycaster.intersectObjects(dynamicFoodGroup.children, true)
+          if (foodIntersects.length > 0) {
+            handleFoodInteraction(event)
+            return // 如果点击了食物，不处理其他交互
+          }
+        }
+
         // 检查冰箱交互
         if (fridgeModel) {
           const intersects = raycaster.intersectObjects(fridgeModel.children, true)
@@ -262,8 +333,10 @@ export default {
 
             if (clickedGroup === fridgeModel.upperDoorGroup) {
               toggleUpperDoor()
+              return
             } else if (clickedGroup === fridgeModel.lowerDoorGroup) {
               toggleLowerDoor()
+              return
             }
           }
         }
@@ -283,12 +356,14 @@ export default {
 
             if (clickedGroup === freezerModel.lidGroup) {
               toggleFreezerLid()
+              return
             }
           }
         }
       }
 
       container.addEventListener('click', onMouseClick)
+      container.addEventListener('mousemove', handleFoodInteraction)
 
       // 动画循环
       const animate = () => {
@@ -306,6 +381,7 @@ export default {
       onUnmounted(() => {
         window.removeEventListener('resize', handleResize)
         container.removeEventListener('click', onMouseClick)
+        container.removeEventListener('mousemove', handleFoodInteraction)
         cancelAnimationFrame(animationId)
         if (controls) controls.dispose()
         if (renderer) {
@@ -362,13 +438,13 @@ export default {
 
             scene.add(fridgeModel)
             loading.value = false
-            console.log('冰箱模型加载成功')
+
           },
           (progress) => {
-            console.log('加载进度:', (progress.loaded / progress.total * 100) + '%')
+
           },
           (err) => {
-            console.log(`尝试加载 ${modelPaths[pathIndex]} 失败:`, err)
+
             tryLoadModel(pathIndex + 1)
           }
         )
@@ -378,7 +454,6 @@ export default {
     }
 
     const createFallbackFridge = () => {
-      console.log('创建专业双门冰箱模型')
 
       // 创建冰箱组
       const fridgeGroup = new THREE.Group()
@@ -577,10 +652,9 @@ export default {
 
       // 数字显示
       const displayGeometry = new THREE.PlaneGeometry(0.15, 0.08)
-      const displayMaterial = new THREE.MeshBasicMaterial({
+      const displayMaterial = new THREE.MeshLambertMaterial({
         color: 0x00ff00,
-        emissive: 0x004400,
-        emissiveIntensity: 0.5
+        emissive: 0x004400
       })
       const display = new THREE.Mesh(displayGeometry, displayMaterial)
       display.position.set(-0.6, 2.8, 0.85)
@@ -685,10 +759,9 @@ export default {
 
       // 门锁指示灯 - 修正位置
       const lockIndicatorGeometry = new THREE.SphereGeometry(0.015)
-      const lockIndicatorMaterial = new THREE.MeshBasicMaterial({
+      const lockIndicatorMaterial = new THREE.MeshLambertMaterial({
         color: 0x00ff00,
-        emissive: 0x002200,
-        emissiveIntensity: 0.3
+        emissive: 0x002200
       })
       const lockIndicator = new THREE.Mesh(lockIndicatorGeometry, lockIndicatorMaterial)
       lockIndicator.position.set(1.4, -0.3, 0.04)
@@ -731,8 +804,19 @@ export default {
 
       scene.add(fridgeGroup)
       fridgeModel = fridgeGroup
+
+      // 创建动态食物组
+      dynamicFoodGroup = new THREE.Group()
+      scene.add(dynamicFoodGroup)
+
       loading.value = false
-      error.value = '使用专业双门冰箱模型'
+
+      // 模型加载完成后加载和渲染食物
+      loadFoodData().then(() => {
+        if (foodData.value.length > 0) {
+          renderDynamicFoods()
+        }
+      })
     }
 
     // 创建厨房装饰
@@ -1038,10 +1122,9 @@ export default {
 
       // 电源指示灯
       const indicatorGeometry = new THREE.SphereGeometry(0.02)
-      const indicatorMaterial = new THREE.MeshBasicMaterial({
+      const indicatorMaterial = new THREE.MeshLambertMaterial({
         color: 0x00ff00,
-        emissive: 0x004400,
-        emissiveIntensity: 0.5
+        emissive: 0x004400
       })
       const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial)
       indicator.position.set(1.0, 1.0, 0.91)
@@ -1054,6 +1137,17 @@ export default {
 
       // 保存冰柜引用
       freezerModel = freezerGroup
+
+      // 如果动态食物组还未创建，创建它
+      if (!dynamicFoodGroup) {
+        dynamicFoodGroup = new THREE.Group()
+        scene.add(dynamicFoodGroup)
+      }
+
+      // 如果有食物数据，渲染食物
+      if (foodData.value.length > 0) {
+        renderDynamicFoods()
+      }
     }
 
     // 创建真实层次感的冰箱内部
@@ -1082,10 +1176,9 @@ export default {
           specular: 0xffd700
         }),
         // LED灯条 - 更亮更温暖
-        ledLight: new THREE.MeshBasicMaterial({
+        ledLight: new THREE.MeshLambertMaterial({
           color: 0xffffff,
-          emissive: 0xfff8dc, // 温暖白光
-          emissiveIntensity: 0.8
+          emissive: 0xfff8dc // 温暖白光
         }),
         // 塑料组件 - 现代感
         plastic: new THREE.MeshPhongMaterial({
@@ -1612,10 +1705,9 @@ export default {
 
       // 传感器显示屏
       const displayGeometry = new THREE.PlaneGeometry(0.025, 0.015)
-      const displayMaterial = new THREE.MeshBasicMaterial({
+      const displayMaterial = new THREE.MeshLambertMaterial({
         color: 0x00ff00,
-        emissive: 0x002200,
-        emissiveIntensity: 0.3
+        emissive: 0x002200
       })
       const sensorDisplay = new THREE.Mesh(displayGeometry, displayMaterial)
       sensorDisplay.position.set(0.6, 0.7, -0.645)
@@ -2032,6 +2124,11 @@ export default {
       isHintCollapsed.value = !isHintCollapsed.value
     }
 
+    // 选择器收纳功能
+    const toggleSelector = () => {
+      isSelectorCollapsed.value = !isSelectorCollapsed.value
+    }
+
     // 设备切换功能
     const switchDevice = (device) => {
       currentDevice.value = device
@@ -2104,14 +2201,607 @@ export default {
       animateCamera()
     }
 
+    // 加载食物数据
+    const loadFoodData = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/food')
+        if (!response.ok) {
+          throw new Error(`HTTP错误: ${response.status}`)
+        }
+        const foods = await response.json()
+        foodData.value = foods
+
+        // 如果3D模型已加载，立即渲染食物
+        if (fridgeModel && dynamicFoodGroup) {
+          renderDynamicFoods()
+        }
+      } catch (err) {
+        error.value = '无法连接到服务器'
+      }
+    }
+
+    // 根据存储位置映射到3D坐标 - 基于实际冰箱布局
+    const getStoragePosition = (storageLocation, index = 0) => {
+      const positions = {
+        // 冷藏室上层 (4°C) - 饮料区和蔬果区
+        '冰箱上层冷藏室': [
+          // 饮料区 (左侧)
+          { x: -0.6, y: 2.8, z: -0.2, zone: '饮料区' },
+          { x: -0.3, y: 2.8, z: -0.2, zone: '饮料区' },
+          { x: -0.6, y: 2.6, z: -0.3, zone: '饮料区' },
+          { x: -0.3, y: 2.6, z: -0.3, zone: '饮料区' },
+          // 蔬果区 (右侧)
+          { x: 0.2, y: 2.8, z: -0.2, zone: '蔬果区' },
+          { x: 0.5, y: 2.8, z: -0.2, zone: '蔬果区' },
+          { x: 0.2, y: 2.6, z: -0.3, zone: '蔬果区' },
+          { x: 0.5, y: 2.6, z: -0.3, zone: '蔬果区' }
+        ],
+        
+        // 冷藏室中层 (3°C) - 主要存储区
+        '冰箱中层冷藏室': [
+          { x: -0.6, y: 2.0, z: -0.2 },
+          { x: -0.3, y: 2.0, z: -0.2 },
+          { x: 0, y: 2.0, z: -0.2 },
+          { x: 0.3, y: 2.0, z: -0.2 },
+          { x: 0.6, y: 2.0, z: -0.2 },
+          { x: -0.6, y: 1.8, z: -0.3 },
+          { x: -0.3, y: 1.8, z: -0.3 },
+          { x: 0, y: 1.8, z: -0.3 },
+          { x: 0.3, y: 1.8, z: -0.3 },
+          { x: 0.6, y: 1.8, z: -0.3 }
+        ],
+
+        // 冷藏室下层 (2°C) - 剩菜保鲜盒区域
+        '保鲜盒': [
+          { x: -0.4, y: 1.2, z: -0.2, container: '保鲜盒1' },
+          { x: -0.1, y: 1.2, z: -0.2, container: '保鲜盒1' },
+          { x: 0.2, y: 1.2, z: -0.2, container: '保鲜盒2' },
+          { x: 0.5, y: 1.2, z: -0.2, container: '保鲜盒2' },
+          { x: -0.4, y: 1.0, z: -0.3, container: '保鲜盒3' },
+          { x: -0.1, y: 1.0, z: -0.3, container: '保鲜盒3' },
+          { x: 0.2, y: 1.0, z: -0.3, container: '保鲜盒4' },
+          { x: 0.5, y: 1.0, z: -0.3, container: '保鲜盒4' }
+        ],
+
+        // 冷冻室 (下层冷冻室 -18°C)
+        '冰箱下层冷冻室': [
+          { x: -0.5, y: 0.6, z: -0.2 },
+          { x: -0.2, y: 0.6, z: -0.2 },
+          { x: 0.1, y: 0.6, z: -0.2 },
+          { x: 0.4, y: 0.6, z: -0.2 },
+          { x: -0.5, y: 0.4, z: -0.3 },
+          { x: -0.2, y: 0.4, z: -0.3 },
+          { x: 0.1, y: 0.4, z: -0.3 },
+          { x: 0.4, y: 0.4, z: -0.3 }
+        ],
+
+        // 门架区 (6°C) - 调料和小物品
+        '冰箱门储物格': [
+          { x: 0.85, y: 2.5, z: 0.3, shelf: '上门架' },
+          { x: 0.85, y: 2.3, z: 0.3, shelf: '上门架' },
+          { x: 0.85, y: 2.1, z: 0.3, shelf: '上门架' },
+          { x: 0.85, y: 1.8, z: 0.3, shelf: '中门架' },
+          { x: 0.85, y: 1.6, z: 0.3, shelf: '中门架' },
+          { x: 0.85, y: 1.4, z: 0.3, shelf: '中门架' },
+          { x: 0.85, y: 1.1, z: 0.3, shelf: '下门架' },
+          { x: 0.85, y: 0.9, z: 0.3, shelf: '下门架' }
+        ],
+
+        // 蔬菜保鲜抽屉
+        '蔬菜室': [
+          { x: -0.4, y: 0.15, z: -0.2 },
+          { x: -0.1, y: 0.15, z: -0.2 },
+          { x: 0.2, y: 0.15, z: -0.2 },
+          { x: 0.5, y: 0.15, z: -0.2 },
+          { x: -0.4, y: 0.15, z: -0.4 },
+          { x: -0.1, y: 0.15, z: -0.4 },
+          { x: 0.2, y: 0.15, z: -0.4 },
+          { x: 0.5, y: 0.15, z: -0.4 }
+        ],
+
+        // 冰柜位置
+        '冰柜': [
+          { x: -2.5, y: 0.8, z: 0.8 },
+          { x: -2.8, y: 0.8, z: 0.9 },
+          { x: -3.2, y: 0.8, z: 1.0 },
+          { x: -2.5, y: 0.6, z: 0.6 },
+          { x: -2.8, y: 0.6, z: 0.7 },
+          { x: -3.2, y: 0.6, z: 0.8 }
+        ]
+      }
+
+      // 智能位置匹配 - 根据存储位置和食物类型
+      let locationKey = '冰箱中层冷藏室' // 默认位置
+
+      // 精确匹配存储位置
+      if (positions[storageLocation]) {
+        locationKey = storageLocation
+      } else {
+        // 模糊匹配
+        if (storageLocation.includes('冷冻') || storageLocation.includes('冰冻')) {
+          locationKey = '冰箱下层冷冻室'
+        } else if (storageLocation.includes('上层')) {
+          locationKey = '冰箱上层冷藏室'
+        } else if (storageLocation.includes('保鲜') || storageLocation.includes('剩菜')) {
+          locationKey = '保鲜盒'
+        } else if (storageLocation.includes('蔬菜') || storageLocation.includes('蔬果')) {
+          locationKey = '蔬菜室'
+        } else if (storageLocation.includes('门') || storageLocation.includes('调料')) {
+          locationKey = '冰箱门储物格'
+        } else if (storageLocation.includes('冰柜')) {
+          locationKey = '冰柜'
+        }
+      }
+
+      const locationPositions = positions[locationKey] || positions['冰箱中层冷藏室']
+      const positionIndex = index % locationPositions.length
+      return locationPositions[positionIndex]
+    }
+
+    // 根据食物类型创建3D模型 - 更真实的食物外观
+    const createFoodModel = (food, position) => {
+      const foodGroup = new THREE.Group()
+
+      // 详细的食物颜色和材质配置
+      const getFoodAppearance = (food) => {
+        const name = food.name.toLowerCase()
+        const category = food.category
+
+        // 具体食物的外观配置
+        const specificFoods = {
+          // 蔬菜类
+          '番茄': { color: 0xFF6347, shape: 'sphere', size: 0.04, emoji: '🍅' },
+          '西红柿': { color: 0xFF6347, shape: 'sphere', size: 0.04, emoji: '🍅' },
+          '生菜': { color: 0x90EE90, shape: 'lettuce', size: 0.05, emoji: '🥬' },
+          '白菜': { color: 0xF0FFF0, shape: 'lettuce', size: 0.06, emoji: '🥬' },
+          '胡萝卜': { color: 0xFF8C00, shape: 'carrot', size: 0.08, emoji: '🥕' },
+          '土豆': { color: 0xDEB887, shape: 'sphere', size: 0.05, emoji: '🥔' },
+          '洋葱': { color: 0xFFE4B5, shape: 'sphere', size: 0.04, emoji: '🧅' },
+          
+          // 水果类
+          '苹果': { color: 0xFF0000, shape: 'apple', size: 0.04, emoji: '🍎' },
+          '香蕉': { color: 0xFFFF00, shape: 'banana', size: 0.06, emoji: '🍌' },
+          '橙子': { color: 0xFFA500, shape: 'sphere', size: 0.04, emoji: '🍊' },
+          '葡萄': { color: 0x800080, shape: 'grape', size: 0.03, emoji: '🍇' },
+          
+          // 肉类
+          '鸡肉': { color: 0xFFE4E1, shape: 'meat', size: 0.06, emoji: '🍗' },
+          '猪肉': { color: 0xFFB6C1, shape: 'meat', size: 0.07, emoji: '🥩' },
+          '牛肉': { color: 0x8B0000, shape: 'meat', size: 0.07, emoji: '🥩' },
+          '鱼': { color: 0xC0C0C0, shape: 'fish', size: 0.08, emoji: '🐟' },
+          
+          // 奶制品
+          '牛奶': { color: 0xFFFFF0, shape: 'milk', size: 0.12, emoji: '🥛' },
+          '酸奶': { color: 0xFFFACD, shape: 'yogurt', size: 0.05, emoji: '🥛' },
+          '奶酪': { color: 0xFFD700, shape: 'cheese', size: 0.04, emoji: '🧀' },
+          
+          // 饮料
+          '可乐': { color: 0x8B4513, shape: 'bottle', size: 0.12, emoji: '🥤' },
+          '果汁': { color: 0xFFA500, shape: 'bottle', size: 0.12, emoji: '🧃' },
+          '啤酒': { color: 0xDAA520, shape: 'bottle', size: 0.12, emoji: '🍺' },
+          
+          // 调料
+          '盐': { color: 0xFFFFFF, shape: 'jar', size: 0.03, emoji: '🧂' },
+          '糖': { color: 0xFFFFF0, shape: 'jar', size: 0.03, emoji: '🍯' },
+          '醋': { color: 0x8B4513, shape: 'bottle', size: 0.08, emoji: '🍶' },
+          
+          // 罐头
+          '罐头': { color: 0xC0C0C0, shape: 'can', size: 0.05, emoji: '🥫' }
+        }
+
+        // 查找具体食物配置
+        for (const [key, config] of Object.entries(specificFoods)) {
+          if (name.includes(key)) {
+            return config
+          }
+        }
+
+        // 按类别返回默认配置
+        const categoryDefaults = {
+          '蔬菜': { color: 0x90EE90, shape: 'box', size: 0.05, emoji: '🥬' },
+          '水果': { color: 0xFF6347, shape: 'sphere', size: 0.04, emoji: '🍎' },
+          '肉类': { color: 0xDC143C, shape: 'meat', size: 0.06, emoji: '🍗' },
+          '奶制品': { color: 0xFFFACD, shape: 'cylinder', size: 0.05, emoji: '🥛' },
+          '饮料': { color: 0x87CEEB, shape: 'bottle', size: 0.12, emoji: '🥤' },
+          '调料': { color: 0xDEB887, shape: 'jar', size: 0.03, emoji: '🧂' },
+          '罐头': { color: 0xC0C0C0, shape: 'can', size: 0.05, emoji: '🥫' },
+          '熟食': { color: 0xD2691E, shape: 'box', size: 0.06, emoji: '🍲' },
+          '主食': { color: 0xF5DEB3, shape: 'box', size: 0.05, emoji: '🍞' },
+          '其他': { color: 0xD3D3D3, shape: 'box', size: 0.05, emoji: '📦' }
+        }
+
+        return categoryDefaults[category] || categoryDefaults['其他']
+      }
+
+      const appearance = getFoodAppearance(food)
+      
+      // 创建食物几何体
+      let geometry
+      switch (appearance.shape) {
+        case 'sphere':
+          geometry = new THREE.SphereGeometry(appearance.size, 12, 8)
+          break
+        case 'apple':
+          geometry = new THREE.SphereGeometry(appearance.size, 12, 8)
+          geometry.scale(1, 1.1, 1) // 苹果形状
+          break
+        case 'banana':
+          geometry = new THREE.CylinderGeometry(0.01, 0.015, appearance.size, 8)
+          geometry.rotateZ(Math.PI / 6) // 弯曲效果
+          break
+        case 'lettuce':
+          geometry = new THREE.SphereGeometry(appearance.size, 8, 6)
+          geometry.scale(1, 0.6, 1) // 扁平的生菜形状
+          break
+        case 'carrot':
+          geometry = new THREE.CylinderGeometry(0.008, 0.02, appearance.size, 8)
+          break
+        case 'meat':
+          geometry = new THREE.BoxGeometry(appearance.size, appearance.size * 0.4, appearance.size * 0.8)
+          break
+        case 'fish':
+          geometry = new THREE.SphereGeometry(appearance.size * 0.6, 8, 6)
+          geometry.scale(1.5, 0.8, 1) // 鱼的形状
+          break
+        case 'milk':
+          geometry = new THREE.BoxGeometry(0.04, appearance.size, 0.03) // 牛奶盒
+          break
+        case 'yogurt':
+          geometry = new THREE.CylinderGeometry(0.025, 0.025, appearance.size, 8)
+          break
+        case 'cheese':
+          geometry = new THREE.BoxGeometry(appearance.size, appearance.size * 0.3, appearance.size)
+          break
+        case 'bottle':
+          geometry = new THREE.CylinderGeometry(0.015, 0.02, appearance.size, 8)
+          break
+        case 'jar':
+          geometry = new THREE.CylinderGeometry(0.02, 0.02, appearance.size, 8)
+          break
+        case 'can':
+          geometry = new THREE.CylinderGeometry(0.025, 0.025, appearance.size, 12)
+          break
+        case 'grape':
+          // 创建葡萄串
+          const grapeGroup = new THREE.Group()
+          for (let i = 0; i < 6; i++) {
+            const grapeGeometry = new THREE.SphereGeometry(0.008, 6, 4)
+            const grapeMesh = new THREE.Mesh(grapeGeometry, new THREE.MeshPhongMaterial({ color: appearance.color }))
+            grapeMesh.position.set(
+              (Math.random() - 0.5) * 0.02,
+              i * -0.01,
+              (Math.random() - 0.5) * 0.02
+            )
+            grapeGroup.add(grapeMesh)
+          }
+          foodGroup.add(grapeGroup)
+          geometry = null // 不需要主几何体
+          break
+        default:
+          geometry = new THREE.BoxGeometry(appearance.size, appearance.size, appearance.size)
+      }
+
+      // 创建材质
+      const material = new THREE.MeshPhongMaterial({
+        color: appearance.color,
+        shininess: 50,
+        transparent: false,
+        opacity: 1.0
+      })
+
+      // 添加主要食物网格
+      if (geometry) {
+        const foodMesh = new THREE.Mesh(geometry, material)
+        foodMesh.castShadow = true
+        foodMesh.receiveShadow = true
+        foodGroup.add(foodMesh)
+      }
+
+      // 创建emoji标签 (更直观)
+      const labelCanvas = document.createElement('canvas')
+      labelCanvas.width = 64
+      labelCanvas.height = 64
+      const labelContext = labelCanvas.getContext('2d')
+
+      // 绘制emoji背景
+      labelContext.fillStyle = 'rgba(255, 255, 255, 0.9)'
+      labelContext.beginPath()
+      labelContext.arc(32, 32, 28, 0, Math.PI * 2)
+      labelContext.fill()
+
+      // 绘制边框
+      labelContext.strokeStyle = 'rgba(0, 0, 0, 0.3)'
+      labelContext.lineWidth = 2
+      labelContext.stroke()
+
+      // 绘制emoji
+      labelContext.font = '24px Arial'
+      labelContext.textAlign = 'center'
+      labelContext.textBaseline = 'middle'
+      labelContext.fillStyle = 'black'
+      labelContext.fillText(appearance.emoji, 32, 32)
+
+      const labelTexture = new THREE.CanvasTexture(labelCanvas)
+      const labelMaterial = new THREE.MeshBasicMaterial({
+        map: labelTexture,
+        transparent: true,
+        alphaTest: 0.1
+      })
+
+      const labelGeometry = new THREE.PlaneGeometry(0.08, 0.08)
+      const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial)
+      labelMesh.position.set(0, appearance.size + 0.05, 0)
+      
+      // 让标签始终面向相机
+      labelMesh.lookAt(camera.position)
+      foodGroup.add(labelMesh)
+
+      // 添加过期提示
+      if (isExpired(food.expireDate)) {
+        const warningGeometry = new THREE.PlaneGeometry(0.06, 0.06)
+        const warningCanvas = document.createElement('canvas')
+        warningCanvas.width = 32
+        warningCanvas.height = 32
+        const warningContext = warningCanvas.getContext('2d')
+        
+        warningContext.fillStyle = 'red'
+        warningContext.beginPath()
+        warningContext.arc(16, 16, 14, 0, Math.PI * 2)
+        warningContext.fill()
+        
+        warningContext.fillStyle = 'white'
+        warningContext.font = '16px Arial'
+        warningContext.textAlign = 'center'
+        warningContext.fillText('!', 16, 20)
+        
+        const warningTexture = new THREE.CanvasTexture(warningCanvas)
+        const warningMaterial = new THREE.MeshBasicMaterial({
+          map: warningTexture,
+          transparent: true
+        })
+        
+        const warningMesh = new THREE.Mesh(warningGeometry, warningMaterial)
+        warningMesh.position.set(0.04, appearance.size + 0.02, 0)
+        foodGroup.add(warningMesh)
+      }
+
+      // 设置位置
+      foodGroup.position.set(position.x, position.y, position.z)
+
+      // 添加随机旋转，让食物看起来更自然
+      foodGroup.rotation.y = Math.random() * Math.PI * 2
+
+      // 添加悬停效果数据
+      foodGroup.userData = {
+        food: food,
+        originalPosition: position,
+        isHovered: false,
+        appearance: appearance
+      }
+
+      // 确保食物组可见
+      foodGroup.visible = true
+      foodGroup.traverse((child) => {
+        if (child.isMesh) {
+          child.visible = true
+        }
+      })
+
+      return foodGroup
+    }
+
+    // 渲染动态食物 - 智能分区布局
+    const renderDynamicFoods = () => {
+      if (!dynamicFoodGroup || !foodData.value.length) return
+
+      // 清除现有的食物对象
+      while (dynamicFoodGroup.children.length > 0) {
+        dynamicFoodGroup.remove(dynamicFoodGroup.children[0])
+      }
+      foodObjects.value.clear()
+
+      // 按存储位置和食物类型智能分组
+      const locationGroups = {}
+      const categoryPriority = {
+        '饮料': 'drink',
+        '水果': 'fruit', 
+        '蔬菜': 'vegetable',
+        '奶制品': 'dairy',
+        '肉类': 'meat',
+        '熟食': 'cooked',
+        '调料': 'seasoning',
+        '罐头': 'canned'
+      }
+
+      foodData.value.forEach(food => {
+        let location = food.storageLocation || '冰箱中层冷藏室'
+        
+        // 智能位置推荐 - 如果用户没有指定合适位置，根据食物类型推荐
+        if (location === '冰箱' || location === '冷藏室') {
+          switch (food.category) {
+            case '饮料':
+              location = '冰箱上层冷藏室' // 饮料区
+              break
+            case '水果':
+            case '蔬菜':
+              if (food.name.includes('苹果') || food.name.includes('橙子')) {
+                location = '冰箱上层冷藏室' // 蔬果区
+              } else {
+                location = '蔬菜室' // 保鲜抽屉
+              }
+              break
+            case '肉类':
+            case '海鲜':
+              location = '冰箱下层冷冻室' // 冷冻区
+              break
+            case '熟食':
+              location = '保鲜盒' // 剩菜区
+              break
+            case '调料':
+              location = '冰箱门储物格' // 门架区
+              break
+            case '奶制品':
+              if (food.name.includes('牛奶')) {
+                location = '冰箱上层冷藏室' // 饮料区
+              } else {
+                location = '冰箱中层冷藏室'
+              }
+              break
+            default:
+              location = '冰箱中层冷藏室'
+          }
+        }
+
+        if (!locationGroups[location]) {
+          locationGroups[location] = []
+        }
+        locationGroups[location].push(food)
+      })
+
+      // 为每个位置的食物创建3D模型
+      Object.entries(locationGroups).forEach(([location, foods]) => {
+        // 按类别排序，让同类食物聚集在一起
+        foods.sort((a, b) => {
+          const aPriority = categoryPriority[a.category] || 'z'
+          const bPriority = categoryPriority[b.category] || 'z'
+          return aPriority.localeCompare(bPriority)
+        })
+
+        foods.forEach((food, index) => {
+          const position = getStoragePosition(location, index)
+          const foodModel = createFoodModel(food, position)
+
+          // 添加位置信息到userData
+          foodModel.userData.location = location
+          foodModel.userData.zone = position.zone || position.shelf || position.container || '主区域'
+
+          dynamicFoodGroup.add(foodModel)
+          foodObjects.value.set(food._id, foodModel)
+        })
+      })
+
+      
+      // 添加区域标识
+      createZoneLabels(locationGroups)
+    }
+
+    // 创建存储区域标识
+    const createZoneLabels = (locationGroups) => {
+      const zonePositions = {
+        '冰箱上层冷藏室': { x: 0, y: 3.2, z: 0, label: '冷藏上层 4°C' },
+        '冰箱中层冷藏室': { x: 0, y: 2.3, z: 0, label: '冷藏中层 3°C' },
+        '保鲜盒': { x: 0, y: 1.4, z: 0, label: '保鲜区 2°C' },
+        '冰箱下层冷冻室': { x: 0, y: 0.8, z: 0, label: '冷冻室 -18°C' },
+        '冰箱门储物格': { x: 0.9, y: 2.0, z: 0.4, label: '门架区 6°C' },
+        '蔬菜室': { x: 0, y: 0.3, z: 0, label: '蔬菜室 4°C' }
+      }
+
+      Object.keys(locationGroups).forEach(location => {
+        const zoneInfo = zonePositions[location]
+        if (!zoneInfo) return
+
+        const labelCanvas = document.createElement('canvas')
+        labelCanvas.width = 200
+        labelCanvas.height = 40
+        const labelContext = labelCanvas.getContext('2d')
+
+        // 绘制半透明背景
+        labelContext.fillStyle = 'rgba(0, 0, 0, 0.7)'
+        labelContext.fillRect(0, 0, 200, 40)
+
+        // 绘制文字
+        labelContext.fillStyle = 'white'
+        labelContext.font = '14px Arial'
+        labelContext.textAlign = 'center'
+        labelContext.fillText(zoneInfo.label, 100, 25)
+
+        const labelTexture = new THREE.CanvasTexture(labelCanvas)
+        const labelMaterial = new THREE.MeshBasicMaterial({
+          map: labelTexture,
+          transparent: true,
+          alphaTest: 0.1
+        })
+
+        const labelGeometry = new THREE.PlaneGeometry(0.3, 0.06)
+        const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial)
+        labelMesh.position.set(zoneInfo.x, zoneInfo.y, zoneInfo.z)
+        labelMesh.lookAt(camera.position)
+        
+        // 添加到动态食物组，这样可以一起管理
+        dynamicFoodGroup.add(labelMesh)
+      })
+    }
+
+    // 检查食物是否过期
+    const isExpired = (expireDate) => {
+      const today = new Date()
+      const expire = new Date(expireDate)
+      return expire < today
+    }
+
+
+
+    // 添加食物交互
+    const handleFoodInteraction = (event) => {
+      if (!dynamicFoodGroup) return
+
+      const rect = canvasContainer.value.getBoundingClientRect()
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+      raycaster.setFromCamera(mouse, camera)
+      const intersects = raycaster.intersectObjects(dynamicFoodGroup.children, true)
+
+      // 重置所有食物的悬停状态（仅在鼠标移动时）
+      if (event.type === 'mousemove') {
+        dynamicFoodGroup.children.forEach(foodGroup => {
+          if (foodGroup.userData.isHovered) {
+            foodGroup.scale.setScalar(1)
+            foodGroup.userData.isHovered = false
+          }
+        })
+      }
+
+      if (intersects.length > 0) {
+        let foodGroup = intersects[0].object
+        // 向上查找直到找到包含食物数据的组
+        while (foodGroup && !foodGroup.userData.food) {
+          foodGroup = foodGroup.parent
+        }
+
+        if (foodGroup && foodGroup.userData.food) {
+          // 悬停效果
+          if (event.type === 'mousemove') {
+            foodGroup.scale.setScalar(1.2)
+            foodGroup.userData.isHovered = true
+            canvasContainer.value.style.cursor = 'pointer'
+          }
+
+          // 点击时显示食物详细信息
+          if (event.type === 'click') {
+            selectedFood.value = foodGroup.userData.food
+          }
+        }
+      } else if (event.type === 'mousemove') {
+        canvasContainer.value.style.cursor = 'default'
+      }
+    }
+
     return {
       canvasContainer,
       loading,
       error,
       isHintCollapsed,
+      isSelectorCollapsed,
       currentDevice,
+      foodData,
+      selectedFood,
       toggleHint,
-      switchDevice
+      toggleSelector,
+      switchDevice,
+      loadFoodData,
+      renderDynamicFoods,
+      isExpired
     }
   }
 }
@@ -2121,7 +2811,8 @@ export default {
 .food-map-container {
   position: relative;
   width: 100%;
-  height: 80vh;
+  height: calc(100vh - 60px);
+  /* 减去导航栏高度 */
 }
 
 #webgl {
@@ -2156,56 +2847,69 @@ export default {
 .controls-hint {
   position: absolute;
   bottom: 20px;
-  left: 20px;
+  left: 0;
   background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(30, 30, 30, 0.9));
   color: white;
-  border-radius: 12px;
+  border-radius: 0 12px 12px 0;
   font-size: 14px;
   line-height: 1.6;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  min-width: 220px;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
 
   &.collapsed {
-    .hint-content {
-      max-height: 0;
-      overflow: hidden;
-      padding: 0 20px;
+    transform: translateX(-100%);
+
+    .hint-toggle {
+      transform: translateX(100%);
+      border-radius: 0 8px 8px 0;
     }
   }
 
-  .hint-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
+  .hint-toggle {
+    position: absolute;
+    right: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 60px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(30, 30, 30, 0.9));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
     cursor: pointer;
-    border-radius: 12px 12px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: linear-gradient(135deg, rgba(135, 206, 235, 0.3), rgba(70, 130, 180, 0.3));
     }
+
+    .toggle-icon {
+      color: #87CEEB;
+      font-size: 16px;
+      font-weight: bold;
+    }
+  }
+
+  .hint-content {
+    padding: 20px;
+    min-width: 220px;
   }
 
   .hint-title {
     font-size: 16px;
     font-weight: bold;
     color: #87CEEB;
-  }
-
-  .collapse-icon {
-    font-size: 12px;
-    color: #87CEEB;
-    transition: transform 0.3s ease;
-  }
-
-  .hint-content {
-    padding: 0 20px 20px;
-    max-height: 300px;
-    overflow: hidden;
-    transition: all 0.3s ease;
+    margin-bottom: 15px;
+    text-align: center;
   }
 
   .hint-item {
@@ -2235,14 +2939,59 @@ export default {
 .device-selector {
   position: absolute;
   top: 20px;
-  right: 20px;
+  right: 0;
   background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(30, 30, 30, 0.9));
   color: white;
-  padding: 15px;
-  border-radius: 12px;
+  border-radius: 12px 0 0 12px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+
+  &.collapsed {
+    transform: translateX(100%);
+
+    .selector-toggle {
+      transform: translateX(-100%);
+      border-radius: 8px 0 0 8px;
+    }
+  }
+
+  .selector-toggle {
+    position: absolute;
+    left: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 60px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(30, 30, 30, 0.9));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: linear-gradient(135deg, rgba(135, 206, 235, 0.3), rgba(70, 130, 180, 0.3));
+    }
+
+    .toggle-icon {
+      color: #87CEEB;
+      font-size: 16px;
+      font-weight: bold;
+    }
+  }
+
+  .selector-content {
+    padding: 15px;
+  }
 
   .selector-title {
     font-size: 14px;
@@ -2277,6 +3026,171 @@ export default {
       border-color: #87CEEB;
       box-shadow: 0 4px 15px rgba(135, 206, 235, 0.3);
     }
+  }
+
+  .food-count {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+
+    .count-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #87CEEB;
+
+      .count-icon {
+        margin-right: 8px;
+        font-size: 16px;
+      }
+    }
+
+    .refresh-btn {
+      background: rgba(135, 206, 235, 0.2);
+      border: 1px solid rgba(135, 206, 235, 0.4);
+      color: #87CEEB;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      margin-left: 10px;
+
+      &:hover {
+        background: rgba(135, 206, 235, 0.3);
+        transform: scale(1.05);
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+    }
+
+
+  }
+}
+
+.food-info-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+
+  .food-info-content {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.9), rgba(30, 30, 30, 0.95));
+    border-radius: 16px;
+    padding: 0;
+    max-width: 400px;
+    width: 90%;
+    max-height: 80vh;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow:
+      0 20px 60px rgba(0, 0, 0, 0.5),
+      0 8px 20px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+
+    .food-info-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 25px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      background: linear-gradient(135deg, rgba(135, 206, 235, 0.2), rgba(70, 130, 180, 0.2));
+
+      h3 {
+        margin: 0;
+        color: #87CEEB;
+        font-size: 20px;
+        font-weight: bold;
+        text-shadow: 0 0 8px rgba(135, 206, 235, 0.4);
+      }
+
+      .close-btn {
+        background: none;
+        border: none;
+        color: #87CEEB;
+        font-size: 24px;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(135, 206, 235, 0.2);
+          transform: scale(1.1);
+        }
+      }
+    }
+
+    .food-info-body {
+      padding: 25px;
+      color: white;
+
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 12px 15px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.1);
+          transform: translateX(5px);
+        }
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .info-label {
+          font-weight: 600;
+          color: #87CEEB;
+          min-width: 80px;
+        }
+
+        .info-value {
+          text-align: right;
+          flex: 1;
+          margin-left: 15px;
+
+          &.expired {
+            color: #ff6b6b;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+          }
+        }
+      }
+    }
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
   }
 }
 </style>

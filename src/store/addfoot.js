@@ -201,14 +201,14 @@ export const useAddFootStore = defineStore('addfoot', () => {
   ])
 
   const storageColumns = ref([
-    {text: '冰箱上层冷藏室', value: '冰箱上层冷藏室'},
-    {text: '冰箱中层冷藏室', value: '冰箱中层冷藏室'},
-    {text: '冰箱下层冷冻室 ★', value: '冰箱下层冷冻室 ★'},
-    {text: '冰箱门储物格', value: '冰箱门储物格'},
-    {text: '常温储存', value: '常温储存'},
-    {text: '阴凉干燥处', value: '阴凉干燥处'},
-    {text: '冷冻室', value: '冷冻室'},
-    {text: '保鲜盒', value: '保鲜盒'}
+    {text: '🧊 冰箱上层冷藏室 (4°C)', value: '冰箱上层冷藏室'},
+    {text: '❄️ 冰箱中层冷藏室 (3°C)', value: '冰箱中层冷藏室'},
+    {text: '🧊 冰箱下层冷冻室 (-18°C) ★', value: '冰箱下层冷冻室 ★'},
+    {text: '🚪 冰箱门储物格 (6°C)', value: '冰箱门储物格'},
+    {text: '📦 保鲜盒 (2°C)', value: '保鲜盒'},
+    {text: '🥬 蔬菜室 (4°C)', value: '蔬菜室'},
+    {text: '🏠 常温储存', value: '常温储存'},
+    {text: '🌡️ 阴凉干燥处', value: '阴凉干燥处'}
   ])
 
   const unitColumns = ref([
