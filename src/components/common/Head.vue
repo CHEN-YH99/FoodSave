@@ -224,6 +224,8 @@ const handleInput = debounce(async (value) => {
       }
       showDropdown.value = true;
     } catch (error) {
+      console.error('实时搜索API错误:', error);
+      
       // 只有在有本地缓存数据时才使用Fuse.js作为备选
       if (fuse.value && data.value.length > 0) {
         const results = fuse.value.search(value);
@@ -239,12 +241,7 @@ const handleInput = debounce(async (value) => {
       } else {
         // 没有数据可搜索
         showDropdown.value = false;
-        import('vant').then(({ showToast }) => {
-          showToast({
-            message: '搜索服务不可用，请检查服务器连接',
-            type: 'fail'
-          });
-        });
+        // 不显示错误提示，避免频繁打扰用户
       }
     }
   } else {
@@ -274,15 +271,24 @@ const search = async () => {
     }));
 
   } catch (error) {
+    console.error('搜索API错误:', error);
+    
     // 服务器搜索失败时fallback到本地搜索
     if (fuse.value && data.value.length > 0) {
       const results = fuse.value.search(searchvalue.value.trim());
       searchResults.value = results;
+      
+      import('vant').then(({ showToast }) => {
+        showToast({
+          message: '服务器搜索失败，使用本地搜索',
+          type: 'warning'
+        });
+      });
     } else {
       searchResults.value = [];
       import('vant').then(({ showToast }) => {
         showToast({
-          message: '搜索失败，请检查网络连接',
+          message: '搜索服务暂时不可用',
           type: 'fail'
         });
       });
@@ -347,21 +353,18 @@ const handleBlur = () => {
 
 // 选择搜索结果项
 const selectSearchResult = (item) => {
+  // 关闭下拉框
+  showDropdown.value = false;
+  
+  // 清空搜索框
+  searchvalue.value = '';
 
-  // 将食品名称自动填充到搜索输入框
-  searchvalue.value = item.name;
-  showDropdown.value = false; //自动填充进去后关闭下拉框
-
-  // 保持搜索输入框的焦点状态
-  setTimeout(() => {
-    const searchInput = document.querySelector('.van-search__field');
-    if (searchInput) {
-      searchInput.focus();
+  // 触发自定义事件，让父组件处理跳转
+  window.dispatchEvent(new CustomEvent('searchResultSelected', {
+    detail: {
+      food: item
     }
-  }, 50);
-
-  // 可以emit事件给父组件
-  // emit('select-item', item);
+  }));
 };
 
 // 扫码功能

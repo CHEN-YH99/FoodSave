@@ -1,19 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ROUTE_NAMES } from '@/constants'
+
 // 定义路由
 const routes = [
   {
     path: '/',
-    name: 'Index',
-    // component: index,
-    //懒加载方式导入组件,必须配置vite.config.js才能使用“@”，不然会报错
-    component: () => import('@/pages/Index.vue'),
+    name: ROUTE_NAMES.INDEX,
+    component: () => import('@/views/Index.vue'),
     meta: { title: '首页' }
   },
   {
     path: '/computed',
-    name: 'Computed',
-    // component: location,
-    component: () => import('@/pages/Computed.vue'),
+    name: ROUTE_NAMES.COMPUTED,
+    component: () => import('@/views/Computed.vue'),
     meta: { 
       title: '统计',
       hideHeader: true
@@ -21,19 +20,17 @@ const routes = [
   },
   {
     path: '/addfoot',
-    name: 'Addfoot',
-    // component: location,
-    component: () => import('@/pages/Addfoot.vue'),
+    name: ROUTE_NAMES.ADDFOOT,
+    component: () => import('@/views/Addfoot.vue'),
     meta: { 
-      title: '地图', 
+      title: '添加食材', 
       hideHeader: true 
     }
   },
   {
     path: '/foodmap',
-    name: 'FoodMap',
-    // component: location,
-    component: () => import('@/pages/FoodMap.vue'),
+    name: ROUTE_NAMES.FOOD_MAP,
+    component: () => import('@/views/FoodMap.vue'),
     meta: { 
       title: '存放位置',
       hideHeader: true 
@@ -41,9 +38,8 @@ const routes = [
   },
   {
     path: '/mine',
-    name: 'Mine',
-    // component: mine,
-    component: () => import('@/pages/Mine.vue'),
+    name: ROUTE_NAMES.MINE,
+    component: () => import('@/views/Mine.vue'),
     meta: { 
       title: '我的',
       hideHeader: true,
@@ -52,8 +48,8 @@ const routes = [
   },
   {
     path: '/food-detail/:id',
-    name: 'FoodDetail',
-    component: () => import('@/components/foot/FoodCardDetail.vue'),
+    name: ROUTE_NAMES.FOOD_DETAIL,
+    component: () => import('@/components/business/FoodCardDetail.vue'),
     meta: {
       title: '食品详情',
       hideHeader: true,
@@ -63,10 +59,32 @@ const routes = [
   },
   {
     path: '/category/:categoryId',
-    name: 'CategoryDetail',
-    component: () => import('@/components/foot/FoodCardDetail.vue'),
+    name: ROUTE_NAMES.CATEGORY_DETAIL,
+    component: () => import('@/components/business/FoodCardDetail.vue'),
     meta: {
       title: '分类详情',
+      hideHeader: true,
+      hideTabBar: true
+    },
+    props: true
+  },
+  {
+    path: '/recipe/:id',
+    name: ROUTE_NAMES.RECIPE_DETAIL,
+    component: () => import('@/views/RecipeDetail.vue'),
+    meta: {
+      title: '菜谱详情',
+      hideHeader: true,
+      hideTabBar: true
+    },
+    props: true
+  },
+  {
+    path: '/ingredient-recipes/:ingredientId',
+    name: ROUTE_NAMES.INGREDIENT_RECIPES,
+    component: () => import('@/views/IngredientRecipes.vue'),
+    meta: {
+      title: '食材菜谱',
       hideHeader: true,
       hideTabBar: true
     },

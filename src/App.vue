@@ -2,8 +2,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useIndexStore } from '@/store/index';
-import Head from './components/layout/Head.vue'
-import TabBar from './components/layout/TabBar.vue'
+import Head from './components/common/Head.vue'
+import TabBar from './components/common/TabBar.vue'
 
 const route = useRoute();
 const store = useIndexStore();

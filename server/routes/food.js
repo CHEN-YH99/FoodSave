@@ -23,26 +23,27 @@ router.get('/search', async (req, res) => {
       return res.json([]);
     }
 
-    // 使用MongoDB的文本搜索和正则表达式搜索结合
+    // 转义特殊正则表达式字符
+    const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // 使用正则表达式搜索，避免文本索引问题
     const searchQuery = {
       $or: [
-        { $text: { $search: q } },
-        { name: { $regex: q, $options: 'i' } },
-        { category: { $regex: q, $options: 'i' } },
-        { storageLocation: { $regex: q, $options: 'i' } },
-        { synonyms: { $elemMatch: { $regex: q, $options: 'i' } } }
+        { name: { $regex: escapedQuery, $options: 'i' } },
+        { category: { $regex: escapedQuery, $options: 'i' } },
+        { storageLocation: { $regex: escapedQuery, $options: 'i' } },
+        { synonyms: { $elemMatch: { $regex: escapedQuery, $options: 'i' } } },
+        { description: { $regex: escapedQuery, $options: 'i' } }
       ]
     };
 
     const foods = await Food.find(searchQuery)
       .limit(parseInt(limit))
-      .sort({ 
-        score: { $meta: 'textScore' },
-        createdAt: -1 
-      });
+      .sort({ createdAt: -1 });
 
     res.json(foods);
   } catch (error) {
+    console.error('搜索错误:', error);
     res.status(500).json({ message: '搜索失败', error: error.message });
   }
 });
@@ -56,19 +57,24 @@ router.get('/suggestions', async (req, res) => {
       return res.json([]);
     }
 
+    // 转义特殊正则表达式字符
+    const escapedQuery = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
     // 优先匹配名称开头的食材
     const suggestions = await Food.find({
       $or: [
-        { name: { $regex: `^${q}`, $options: 'i' } },
-        { name: { $regex: q, $options: 'i' } },
-        { synonyms: { $elemMatch: { $regex: q, $options: 'i' } } }
+        { name: { $regex: `^${escapedQuery}`, $options: 'i' } },
+        { name: { $regex: escapedQuery, $options: 'i' } },
+        { synonyms: { $elemMatch: { $regex: escapedQuery, $options: 'i' } } }
       ]
     })
     .limit(parseInt(limit))
-    .select('name category storageLocation expireDate');
+    .select('name category storageLocation expireDate')
+    .sort({ name: 1 });
 
     res.json(suggestions);
   } catch (error) {
+    console.error('获取建议错误:', error);
     res.status(500).json({ message: '获取建议失败', error: error.message });
   }
 });

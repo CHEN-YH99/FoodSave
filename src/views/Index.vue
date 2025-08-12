@@ -39,9 +39,9 @@
               'hidden': !store.showAllCategories && index >= store.maxVisibleCategories,
               'visible': store.showAllCategories || index < store.maxVisibleCategories
             }" :style="{
-                '--delay': `${index * 0.05}s`,
-                '--index': index
-              }" @click="() => handleCategoryClick(item, router)">
+              '--delay': `${index * 0.05}s`,
+              '--index': index
+            }" @click="() => handleCategoryClick(item, router)">
               <div class="category-item">
                 <div class="icon-wrapper" :style="{ backgroundColor: item.bgColor }">
                   <van-icon :name="item.icon" :color="item.iconColor" size="25" />
@@ -55,44 +55,7 @@
     </div>
 
     <!-- 智能推荐 -->
-    <div class="recommend commonstyle">
-      <div class="recommend-header">
-        <div class="header-left">
-          <van-icon name="bulb-o" color="#ff9500" size="25" />
-          <span class="recommend-title">智能推荐</span>
-        </div>
-      </div>
-
-      <div class="recommend-card" @click="() => handleRecommendClick(router)">
-        <div class="card-left">
-          <div class="ingredient-section">
-            <van-image width="70" height="70" :src="store.recommendData.ingredient.image" fit="cover" round
-              class="ingredient-img" />
-            <div class="ingredient-info">
-              <div class="ingredient-name">{{ store.recommendData.ingredient.name }}</div>
-              <div class="ingredient-status"
-                :style="{ color: store.getExpiryColor(store.recommendData.ingredient.expiryDays) }">
-                {{ store.recommendData.ingredient.expiryDays <= 0 ? '已过期' : store.recommendData.ingredient.expiryDays
-                  <= 3 ? `${store.recommendData.ingredient.expiryDays}天后过期` : '即将过期' }} </div>
-              </div>
-            </div>
-
-            <div class="arrow-section">
-              <van-icon name="arrow" color="#ff9500" size="18" />
-              <span class="suggest-text">推荐菜谱:</span>
-            </div>
-          </div>
-
-          <div class="card-right">
-            <div class="recipe-section">
-              <van-image width="60" height="60" :src="store.recommendData.recipe.image" fit="cover" round
-                class="recipe-img" />
-              <div class="recipe-name">{{ store.recommendData.recipe.name }}</div>
-            </div>
-            <van-icon name="arrow" color="#c8c9cc" size="16" class="more-icon" />
-          </div>
-        </div>
-      </div>
+    <SmartRecommendation />
 
       <!-- 最近添加 -->
       <div class="recently-added commonstyle">
@@ -116,16 +79,15 @@
                   <div class="item-name">{{ item.name }}</div>
                   <div class="item-expiry" :style="{ color: store.getExpiryColor(item.expiryDays) }">
                     <van-icon name="clock-o" size="12" />
-                    {{ item.expiryDays <= 0 ? '已过期' : item.expiryDays === 1 ? '明天过期' : `${item.expiryDays}天后过期` }}
+                    {{ item.expiryDays <= 0 ? '已过期' : item.expiryDays === 1 ? '明天过期' : `${item.expiryDays}天后过期` }} </div>
                   </div>
-                </div>
               </template>
               <template #right-icon>
                 <van-icon name="ellipsis" color="#c8c9cc" size="18" />
               </template>
             </van-cell>
           </van-cell-group>
-          
+
           <!-- 空状态 -->
           <div v-else class="empty-state">
             <van-empty description="最近7天暂无添加的食材">
@@ -147,9 +109,10 @@
 </template>
 
 <script setup>
-import { onMounted, ref, nextTick } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
+import SmartRecommendation from '@/components/business/SmartRecommendation.vue'
 
 // 使用router和store
 const router = useRouter()
@@ -179,9 +142,56 @@ const {
 
 
 
+// 处理搜索结果选择事件
+const handleSearchResultSelected = (event) => {
+  const food = event.detail.food
+  
+  // 根据食品类别获取对应的分类ID
+  const categoryId = store.getCategoryIdByFoodCategory(food.category)
+  
+  // 获取分类信息
+  const category = store.foodCategories.find(cat => cat.id === categoryId)
+  
+  if (category) {
+    // 将分类数据和搜索高亮信息存储到缓存中
+    const cacheKey = `category_${category.id}`
+    store.setRouteData(cacheKey, {
+      id: category.id,
+      name: category.name,
+      icon: category.icon,
+      bgColor: category.bgColor,
+      iconColor: category.iconColor,
+      highlightFoodId: food.id, // 添加要高亮的食品ID
+      searchTerm: food.name // 添加搜索关键词
+    })
+
+    // 跳转到分类详情页面
+    router.push({
+      name: 'CategoryDetail',
+      params: { categoryId: category.id }
+    })
+  } else {
+    // 如果找不到对应分类，显示提示
+    import('vant').then(({ showToast }) => {
+      showToast({
+        message: '未找到对应的食品分类',
+        type: 'fail'
+      })
+    })
+  }
+}
+
 // 页面挂载时加载数据
 onMounted(() => {
   loadFoodData()
+  
+  // 监听搜索结果选择事件
+  window.addEventListener('searchResultSelected', handleSearchResultSelected)
+})
+
+// 页面卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('searchResultSelected', handleSearchResultSelected)
 })
 </script>
 
@@ -683,11 +693,11 @@ onMounted(() => {
     .empty-state {
       padding: 20px 0;
       text-align: center;
-      
+
       :deep(.van-empty) {
         padding: 16px 0;
       }
-      
+
       :deep(.van-empty__description) {
         color: #999;
         font-size: 14px;

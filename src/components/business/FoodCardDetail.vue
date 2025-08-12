@@ -52,11 +52,18 @@
         </div>
 
         <div class="food-items" v-if="filteredFoods.length > 0">
-          <van-swipe-cell v-for="food in filteredFoods" :key="food.id" class="swipe-cell">
-            <div class="food-item" @click="handleFoodClick(food)">
+          <van-swipe-cell v-for="food in filteredFoods" :key="food.id" class="swipe-cell"
+            :class="{ 'highlighted': shouldHighlight(food) }">
+            <div class="food-item" :class="{ 'search-highlight': shouldHighlight(food) }"
+              :data-food-id="food.id || food._id" @click="handleFoodClick(food)">
               <van-image :src="food.image" width="50" height="50" fit="cover" round class="food-image" />
               <div class="food-info">
-                <div class="food-name">{{ food.name }}</div>
+                <div class="food-name">
+                  {{ food.name }}
+                  <van-tag v-if="shouldHighlight(food)" type="primary" size="mini" class="search-tag">
+                    搜索结果
+                  </van-tag>
+                </div>
                 <div class="food-details">
                   <span class="storage">{{ food.storageLocation || '冰箱' }}</span>
                   <span class="expire-date" :style="{ color: store.getExpiryColor(food.expiryDays) }">
@@ -416,6 +423,10 @@ const handleCollapse = () => {
 
 
 
+// 高亮的食品ID和搜索关键词
+const highlightFoodId = ref(null)
+const searchTerm = ref('')
+
 // 从缓存加载分类数据
 const loadCategoryData = () => {
   if (isCategoryMode.value) {
@@ -424,6 +435,20 @@ const loadCategoryData = () => {
 
     if (cachedData) {
       categoryInfo.value = { ...cachedData }
+
+      // 检查是否有搜索高亮信息
+      if (cachedData.highlightFoodId) {
+        highlightFoodId.value = cachedData.highlightFoodId
+        searchTerm.value = cachedData.searchTerm || ''
+
+        // 如果有高亮食品，自动展开显示所有食品
+        showAllFoods.value = true
+
+        // 延迟滚动到高亮的食品
+        setTimeout(() => {
+          scrollToHighlightedFood()
+        }, 500)
+      }
     } else {
       // 如果缓存中没有数据，从foodCategories中查找
       const category = store.foodCategories.find(cat => cat.id == route.params.categoryId)
@@ -432,10 +457,36 @@ const loadCategoryData = () => {
       }
     }
 
-    // 重置分页状态
-    showAllFoods.value = false
-    currentPage.value = 1
+    // 重置分页状态（除非有高亮需求）
+    if (!highlightFoodId.value) {
+      showAllFoods.value = false
+      currentPage.value = 1
+    }
   }
+}
+
+// 滚动到高亮的食品
+const scrollToHighlightedFood = () => {
+  if (highlightFoodId.value) {
+    const element = document.querySelector(`[data-food-id="${highlightFoodId.value}"]`)
+    if (element) {
+      element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      })
+
+      // 添加闪烁效果
+      element.classList.add('highlight-flash')
+      setTimeout(() => {
+        element.classList.remove('highlight-flash')
+      }, 2000)
+    }
+  }
+}
+
+// 检查食品是否应该被高亮
+const shouldHighlight = (food) => {
+  return highlightFoodId.value && (food.id === highlightFoodId.value || food._id === highlightFoodId.value)
 }
 
 // 从数据库实时加载食品详情数据
@@ -700,6 +751,13 @@ onMounted(async () => {
             font-weight: 500;
             color: #2c3e50;
             margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .search-tag {
+              animation: pulse 1.5s infinite;
+            }
           }
 
           .food-details {
@@ -716,88 +774,123 @@ onMounted(async () => {
             }
           }
         }
+
+        // 搜索高亮样式
+        &.search-highlight {
+          background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+          border-left: 4px solid #1890ff;
+          position: relative;
+
+          &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(24, 144, 255, 0.1), transparent);
+            animation: shimmer 2s infinite;
+            pointer-events: none;
+          }
+
+          &:hover {
+            background: linear-gradient(135deg, #d6f3ff 0%, #e6f7ff 100%);
+          }
+
+          .food-name {
+            color: #1890ff;
+            font-weight: 600;
+          }
+        }
       }
 
-      .take-out-btn {
-        height: 100%;
-        width: 80px;
-        border-radius: 0;
-        background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
-        border: none;
-        color: white;
-        font-weight: 600;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s ease;
-
-        &:hover:not(:disabled) {
-          background: linear-gradient(135deg, #389e0d 0%, #237804 100%);
-          transform: scale(1.05);
-        }
-
-        &:active:not(:disabled) {
-          transform: scale(0.95);
-        }
-
-        &:disabled {
-          background: linear-gradient(135deg, #d9d9d9 0%, #bfbfbf 100%);
-          cursor: not-allowed;
-          transform: none;
+      // 高亮闪烁动画
+      &.highlighted {
+        .food-item {
+          animation: highlight-flash 2s ease-in-out;
         }
       }
     }
-  }
 
-  .load-more-section {
-    padding: 16px 20px;
-    text-align: center;
-    border-top: 1px solid #f8f9fa;
-
-    .load-more-btn,
-    .collapse-btn {
-      width: 100%;
-      height: 40px;
-      border-radius: 8px;
-      font-weight: 500;
+    .take-out-btn {
+      height: 100%;
+      width: 80px;
+      border-radius: 0;
+      background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+      border: none;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: all 0.3s ease;
 
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #389e0d 0%, #237804 100%);
+        transform: scale(1.05);
       }
 
-      &:active {
-        transform: translateY(0);
+      &:active:not(:disabled) {
+        transform: scale(0.95);
       }
-    }
 
-    .load-more-btn {
-      background: linear-gradient(135deg, #c7f3cf 0%, #9ff18f 100%);
-      border: none;
-      color: rgb(0, 0, 0);
-
-      &:hover {
-        background: linear-gradient(45deg, #9ff18f 0%, #c7f3cf 100%);
+      &:disabled {
+        background: linear-gradient(135deg, #d9d9d9 0%, #bfbfbf 100%);
+        cursor: not-allowed;
+        transform: none;
       }
     }
+  }
+}
 
-    .collapse-btn {
+.load-more-section {
+  padding: 16px 20px;
+  text-align: center;
+  border-top: 1px solid #f8f9fa;
+
+  .load-more-btn,
+  .collapse-btn {
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  .load-more-btn {
+    background: linear-gradient(135deg, #c7f3cf 0%, #9ff18f 100%);
+    border: none;
+    color: rgb(0, 0, 0);
+
+    &:hover {
       background: linear-gradient(45deg, #9ff18f 0%, #c7f3cf 100%);
-      color: #666;
-
-      &:hover {
-        background: linear-gradient(135deg, #c7f3cf 0%, #9ff18f 100%);
-        color: #333;
-      }
     }
   }
 
-  .empty-state {
-    padding: 40px 20px;
-    text-align: center;
+  .collapse-btn {
+    background: linear-gradient(45deg, #9ff18f 0%, #c7f3cf 100%);
+    color: #666;
+
+    &:hover {
+      background: linear-gradient(135deg, #c7f3cf 0%, #9ff18f 100%);
+      color: #333;
+    }
   }
+}
+
+.empty-state {
+  padding: 40px 20px;
+  text-align: center;
 }
 
 // 已取出列表样式
@@ -1044,5 +1137,59 @@ onMounted(async () => {
       }
     }
   }
+}
+
+// 动画定义
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes highlight-flash {
+
+  0%,
+  100% {
+    background: white;
+    transform: scale(1);
+  }
+
+  25% {
+    background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+    transform: scale(1.02);
+  }
+
+  50% {
+    background: linear-gradient(135deg, #bae7ff 0%, #e6f7ff 100%);
+    transform: scale(1.02);
+  }
+
+  75% {
+    background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+    transform: scale(1.02);
+  }
+}
+
+// 高亮闪烁类
+.highlight-flash {
+  animation: highlight-flash 2s ease-in-out !important;
 }
 </style>
