@@ -5,22 +5,50 @@
     <div class="header-section">
       <div class="user-profile">
         <div class="avatar-container">
-          <van-image class="avatar" src="https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg" round width="80"
-            height="80" />
-          <div class="vip-badge">
+          <van-image 
+            class="avatar" 
+            :src="userAvatar" 
+            round 
+            width="80"
+            height="80" 
+          />
+          <div class="vip-badge" v-if="authStore.isAuthenticated">
             <van-icon name="diamond-o" />
           </div>
         </div>
         <div class="user-info">
-          <h2 class="username">智能厨房管家</h2>
-          <div class="user-tags">
+          <h2 class="username">{{ displayName }}</h2>
+          <div class="user-tags" v-if="authStore.isAuthenticated">
             <van-tag type="warning" size="mini" round>★ 高级会员</van-tag>
             <van-tag type="success" size="mini" round>环保达人</van-tag>
           </div>
-          <p class="achievement">已节省食物浪费 {{ userStats.totalSavings }}g</p>
+          <div class="user-tags" v-else>
+            <van-tag type="default" size="mini" round>未登录</van-tag>
+          </div>
+          <p class="achievement" v-if="authStore.isAuthenticated">已节省食物浪费 {{ userStats.totalSavings }}g</p>
+          <p class="achievement" v-else>登录后查看更多功能</p>
         </div>
-        <van-button type="primary" size="small" round icon="edit" @click="editProfile" class="edit-btn">
+        <van-button 
+          v-if="authStore.isAuthenticated"
+          type="primary" 
+          size="small" 
+          round 
+          icon="edit" 
+          @click="editProfile" 
+          class="edit-btn"
+        >
           编辑
+        </van-button>
+        <van-button 
+          v-else
+          type="primary" 
+          size="small" 
+          round 
+          icon="contact" 
+          @click="goToAuth" 
+          class="edit-btn"
+        >
+          登录
         </van-button>
       </div>
     </div>
@@ -79,7 +107,55 @@
       </div>
     </div>
 
-    <!-- 家庭成员 -->
+    <!-- 设置菜单 -->
+    <div class="settings-section">
+      <div class="section-title">
+        <h3>基本设置</h3>
+      </div>
+      <div class="settings-grid">
+        <div class="setting-item" @click="openSettings('notification')">
+          <div class="setting-icon notification">
+            <van-icon name="bell" />
+          </div>
+          <span>通知设置</span>
+          <van-icon name="arrow" class="arrow-icon" />
+        </div>
+
+        <div class="setting-item" @click="openSettings('storage')">
+          <div class="setting-icon storage">
+            <van-icon name="notes-o" />
+          </div>
+          <span>存储管理</span>
+          <van-icon name="arrow" class="arrow-icon" />
+        </div>
+
+        <div class="setting-item" @click="openSettings('theme')">
+          <div class="setting-icon theme">
+            <van-icon name="setting-o" />
+          </div>
+          <span>主题模式</span>
+          <van-icon name="arrow" class="arrow-icon" />
+        </div>
+
+        <div class="setting-item" @click="openSettings('units')">
+          <div class="setting-icon units">
+            <van-icon name="like-o" />
+          </div>
+          <span>我的喜欢</span>
+          <van-icon name="arrow" class="arrow-icon" />
+        </div>
+
+        <div class="setting-item" @click="openSettings('favorites')">
+          <div class="setting-icon favorites">
+            <van-icon name="star-o" />
+          </div>
+          <span>我的收藏</span>
+          <van-icon name="arrow" class="arrow-icon" />
+        </div>
+      </div>
+    </div>
+
+      <!-- 家庭成员 -->
     <div class="family-section">
       <div class="section-title">
         <h3>家庭成员</h3>
@@ -95,44 +171,7 @@
         </div>
       </div>
     </div>
-
-    <!-- 设置菜单 -->
-    <div class="settings-section">
-      <div class="settings-grid">
-        <div class="setting-item" @click="openSettings('notification')">
-          <div class="setting-icon notification">
-            <van-icon name="bell-o" />
-          </div>
-          <span>通知设置</span>
-          <van-icon name="arrow" class="arrow-icon" />
-        </div>
-
-        <div class="setting-item" @click="openSettings('storage')">
-          <div class="setting-icon storage">
-            <van-icon name="records" />
-          </div>
-          <span>存储管理</span>
-          <van-icon name="arrow" class="arrow-icon" />
-        </div>
-
-        <div class="setting-item" @click="openSettings('theme')">
-          <div class="setting-icon theme">
-            <van-icon name="photo-o" />
-          </div>
-          <span>主题模式</span>
-          <van-icon name="arrow" class="arrow-icon" />
-        </div>
-
-        <div class="setting-item" @click="openSettings('units')">
-          <div class="setting-icon units">
-            <van-icon name="balance-o" />
-          </div>
-          <span>单位设置</span>
-          <van-icon name="arrow" class="arrow-icon" />
-        </div>
-      </div>
-    </div>
-
+    
     <!-- 底部支持区域 -->
     <div class="support-section">
       <div class="support-list">
@@ -150,7 +189,7 @@
         </div>
         <div class="support-item logout" @click="logout">
           <van-icon name="sign" />
-          <span>退出登录</span>
+          <span>{{ authStore.isAuthenticated ? '退出登录' : '登录' }}</span>
         </div>
       </div>
     </div>
@@ -158,8 +197,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router' //这里使用局部导入，方便维护
+import { useAuthStore } from '@/store/auth'
 import { showToast, showConfirmDialog, showNotify } from 'vant'
+
+// 路由实例
+const router = useRouter()
+const authStore = useAuthStore()
 
 // 用户统计数据
 const userStats = ref({
@@ -194,6 +239,22 @@ const connectedDevices = computed(() => {
   return Object.values(deviceStatus.value).filter(status => status).length
 })
 
+// 用户显示名称
+const displayName = computed(() => {
+  if (authStore.isAuthenticated && authStore.userInfo.nickname) {
+    return authStore.userInfo.nickname
+  }
+  return '智能厨房管家'
+})
+
+// 用户头像
+const userAvatar = computed(() => {
+  if (authStore.isAuthenticated && authStore.userInfo.avatar) {
+    return authStore.userInfo.avatar
+  }
+  return 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg'
+})
+
 // 页面加载时的初始化
 // onMounted(() => {
 //   // 模拟加载用户数据
@@ -201,7 +262,16 @@ const connectedDevices = computed(() => {
 
 // 编辑资料
 const editProfile = () => {
-  showToast('编辑资料功能开发中...')
+  if (authStore.isAuthenticated) {
+    router.push({ name: 'PersonalInformation' })
+  } else {
+    goToAuth()
+  }
+}
+
+// 跳转到登录页面
+const goToAuth = () => {
+  router.push({ name: 'Auth' })
 }
 
 // 返回
@@ -279,7 +349,8 @@ const openSettings = (settingType) => {
     notification: '通知设置',
     storage: '存储空间设置',
     units: '单位偏好',
-    theme: '主题模式'
+    theme: '主题模式',
+    favorites: '我的收藏'
   }
 
   if (settingType === 'theme') {
@@ -312,6 +383,11 @@ const openSupport = (supportType) => {
 
 // 退出登录
 const logout = () => {
+  if (!authStore.isAuthenticated) {
+    goToAuth()
+    return
+  }
+
   showConfirmDialog({
     title: '确认退出',
     message: '确定要退出登录吗？',
@@ -319,12 +395,21 @@ const logout = () => {
     cancelButtonText: '取消',
     confirmButtonColor: '#ee0a24'
   }).then(() => {
-    showToast('已退出登录')
-    // 这里可以添加实际的退出登录逻辑
+    authStore.logout()
+    // 退出后跳转到登录页面
+    router.push({ name: 'Auth' })
   }).catch(() => {
     // 用户取消
   })
 }
+
+// 页面初始化
+onMounted(async () => {
+  // 验证token有效性
+  if (authStore.token) {
+    await authStore.verifyToken()
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -627,6 +712,10 @@ const logout = () => {
 
           &.units {
             background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+          }
+          
+          &.favorites {
+            background: linear-gradient(135deg, #fddb92 0%, #d1fdff 100%);
           }
         }
 

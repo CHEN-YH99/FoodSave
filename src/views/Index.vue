@@ -57,55 +57,61 @@
     <!-- 智能推荐 -->
     <SmartRecommendation />
 
-      <!-- 最近添加 -->
-      <div class="recently-added commonstyle">
-        <div class="recently-header">
-          <div class="header-left">
-            <van-icon name="clock-o" color="rgb(0, 150, 5)" size="25" />
-            <span class="recently-title">最近添加</span>
-            <span class="recently-subtitle">（最近7天）</span>
-          </div>
-        </div>
-
-        <div class="recently-list">
-          <van-cell-group :border="false" v-if="store.recentlyAdded.length > 0">
-            <van-cell v-for="item in store.recentlyAdded" :key="item.id"
-              @click="() => handleRecentItemClick(item, router)" clickable class="recent-item">
-              <template #icon>
-                <van-image :src="item.image" width="50" height="50" fit="cover" round class="item-image" />
-              </template>
-              <template #title>
-                <div class="item-info">
-                  <div class="item-name">{{ item.name }}</div>
-                  <div class="item-expiry" :style="{ color: store.getExpiryColor(item.expiryDays) }">
-                    <van-icon name="clock-o" size="12" />
-                    {{ item.expiryDays <= 0 ? '已过期' : item.expiryDays === 1 ? '明天过期' : `${item.expiryDays}天后过期` }} </div>
-                  </div>
-              </template>
-              <template #right-icon>
-                <van-icon name="ellipsis" color="#c8c9cc" size="18" />
-              </template>
-            </van-cell>
-          </van-cell-group>
-
-          <!-- 空状态 -->
-          <div v-else class="empty-state">
-            <van-empty description="最近7天暂无添加的食材">
-              <template #image>
-                <van-icon name="clock-o" size="60" color="#ddd" />
-              </template>
-            </van-empty>
-          </div>
-        </div>
-
-        <div class="view-all" @click="handleViewAllClick" v-if="store.allRecentSevenDaysCount > 4">
-          <span class="view-all-text">
-            {{ store.showAllRecentlyAdded ? '收起' : `查看全部 (${store.allRecentSevenDaysCount}个)` }}
-          </span>
-          <van-icon :name="store.showAllRecentlyAdded ? 'arrow-up' : 'arrow-down'" size="14" color="#009605" />
+    <!-- 最近添加 -->
+    <div class="recently-added commonstyle">
+      <div class="recently-header">
+        <div class="header-left">
+          <van-icon name="clock-o" color="rgb(0, 150, 5)" size="25" />
+          <span class="recently-title">最近添加</span>
+          <span class="recently-subtitle">（最近7天）</span>
         </div>
       </div>
+
+      <div class="recently-list">
+        <van-cell-group :border="false" v-if="store.recentlyAdded.length > 0">
+          <van-cell v-for="item in store.recentlyAdded" :key="item.id"
+            @click="() => handleRecentItemClick(item, router)" clickable
+            :class="['recent-item', { 'taken-out': item.isTakenOut }]">
+            <template #icon>
+              <van-image :src="item.image" width="50" height="50" fit="cover" round class="item-image" />
+            </template>
+            <template #title>
+              <div class="item-info">
+                <div class="item-name">
+                  {{ item.name }}
+                  <van-tag v-if="item.isTakenOut" type="success" size="mini" class="taken-out-tag">
+                    已取出
+                  </van-tag>
+                </div>
+                <div class="item-expiry" :style="{ color: store.getExpiryColor(item.expiryDays) }">
+                  <van-icon name="clock-o" size="12" />
+                  {{ item.expiryDays <= 0 ? '已过期' : item.expiryDays === 1 ? '明天过期' : `${item.expiryDays}天后过期` }} </div>
+                </div>
+            </template>
+            <template #right-icon>
+              <van-icon name="ellipsis" color="#c8c9cc" size="18" />
+            </template>
+          </van-cell>
+        </van-cell-group>
+
+        <!-- 空状态 -->
+        <div v-else class="empty-state">
+          <van-empty description="最近7天暂无添加的食材">
+            <template #image>
+              <van-icon name="clock-o" size="60" color="#ddd" />
+            </template>
+          </van-empty>
+        </div>
+      </div>
+
+      <div class="view-all" @click="handleViewAllClick" v-if="store.allRecentSevenDaysCount > 4">
+        <span class="view-all-text">
+          {{ store.showAllRecentlyAdded ? '收起' : `查看全部 (${store.allRecentSevenDaysCount}个)` }}
+        </span>
+        <van-icon :name="store.showAllRecentlyAdded ? 'arrow-up' : 'arrow-down'" size="14" color="#009605" />
+      </div>
     </div>
+  </div>
 </template>
 
 <script setup>
@@ -145,13 +151,13 @@ const {
 // 处理搜索结果选择事件
 const handleSearchResultSelected = (event) => {
   const food = event.detail.food
-  
+
   // 根据食品类别获取对应的分类ID
   const categoryId = store.getCategoryIdByFoodCategory(food.category)
-  
+
   // 获取分类信息
   const category = store.foodCategories.find(cat => cat.id === categoryId)
-  
+
   if (category) {
     // 将分类数据和搜索高亮信息存储到缓存中
     const cacheKey = `category_${category.id}`
@@ -184,7 +190,7 @@ const handleSearchResultSelected = (event) => {
 // 页面挂载时加载数据
 onMounted(() => {
   loadFoodData()
-  
+
   // 监听搜索结果选择事件
   window.addEventListener('searchResultSelected', handleSearchResultSelected)
 })
@@ -490,6 +496,21 @@ onUnmounted(() => {
   }
 }
 
+// 已取出标签脉冲动画
+@keyframes pulse-success {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
 // 分类项过渡动画
 .category-item-enter-active,
 .category-item-leave-active {
@@ -724,63 +745,101 @@ onUnmounted(() => {
         }
       }
 
-      .item-image {
-        margin-right: 12px;
-        border: 2px solid #fff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
+      // 已取出食材的样式
+      &.taken-out {
+        :deep(.van-cell) {
+          background: linear-gradient(135deg, #f6ffed 0%, #f0f9ff 100%);
+          border-left: 3px solid #52c41a;
+          opacity: 0.8;
 
-      .item-info {
-        display: flex;
-        flex-direction: column;
+          &:hover {
+            background: linear-gradient(135deg, #e6f7ff 0%, #d6f3ff 100%);
+            opacity: 1;
+          }
+        }
+
+        .item-image {
+          opacity: 0.7;
+          filter: grayscale(20%);
+        }
 
         .item-name {
-          font-size: 16px;
-          font-weight: 600;
-          color: #2c3e50;
-          margin-bottom: 4px;
+          color: #52c41a;
         }
 
         .item-expiry {
-          font-size: 13px;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-weight: 500;
+          opacity: 0.7;
         }
       }
     }
+
+    .item-image {
+      margin-right: 12px;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .item-info {
+      display: flex;
+      flex-direction: column;
+
+      .item-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .taken-out-tag {
+          background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+          color: white;
+          border: none;
+          font-weight: 500;
+          animation: pulse-success 2s infinite;
+        }
+      }
+
+      .item-expiry {
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+.view-all {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 0;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
   }
 
-  .view-all {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 12px 0;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.3s ease;
+  &:active {
+    background: #e9ecef;
+    transform: translateY(0);
+  }
 
-    &:hover {
-      background: #f8f9fa;
-      transform: translateY(-1px);
-    }
+  .view-all-text {
+    color: rgb(0, 150, 5);
+    font-size: 15px;
+    font-weight: 600;
+  }
 
-    &:active {
-      background: #e9ecef;
-      transform: translateY(0);
-    }
-
-    .view-all-text {
-      color: rgb(0, 150, 5);
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    .van-icon {
-      transition: transform 0.3s ease;
-    }
+  .van-icon {
+    transition: transform 0.3s ease;
   }
 }
 </style>

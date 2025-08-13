@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { showToast, showDialog } from 'vant'
+import axios from 'axios'
 
 // 导入企业级模块
 import { STORAGE_KEYS, EXPIRY_THRESHOLDS, DEFAULT_CONFIG, CATEGORY_MAPPING } from '@/constants'
@@ -583,55 +584,123 @@ export const useIndexStore = defineStore('index', () => {
     return categoryMapping[foodCategory] || 10 // 默认返回"其他"分类
   }
 
+  // 检查食材是否已被取出
+  const isFoodTakenOut = (foodId) => {
+    return takenOutFoods.value.some(takenOutItem => {
+      const takenOutId = takenOutItem._id || takenOutItem.id
+      return takenOutId === foodId
+    })
+  }
+
   // 获取最近7天的所有食材（用于内部过滤）
   const getAllRecentSevenDays = () => {
-    if (!foodData.value || foodData.value.length === 0) {
-      return []
-    }
-
     // 计算7天前的日期
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     sevenDaysAgo.setHours(0, 0, 0, 0)
 
-    // 过滤出最近7天添加的食材
-    const recentData = foodData.value.filter(item => {
-      // 检查是否有有效的创建时间
-      if (!item.createdAt && !item.updatedAt) {
-        return false // 没有时间戳的数据不显示
-      }
+    // 合并当前食材和已取出食材的列表
+    const allItems = []
 
-      // 优先使用createdAt，如果没有则使用updatedAt
-      const timeField = item.createdAt || item.updatedAt
-      const createdDate = new Date(timeField)
+    // 1. 添加当前存在的食材
+    if (foodData.value && foodData.value.length > 0) {
+      const currentFoods = foodData.value.filter(item => {
+        // 检查是否有有效的创建时间
+        if (!item.createdAt && !item.updatedAt) {
+          return false
+        }
 
-      // 检查日期是否有效
-      if (isNaN(createdDate.getTime())) {
-        return false
-      }
+        // 优先使用createdAt，如果没有则使用updatedAt
+        const timeField = item.createdAt || item.updatedAt
+        const createdDate = new Date(timeField)
 
-      createdDate.setHours(0, 0, 0, 0)
-      return createdDate >= sevenDaysAgo
-    })
+        // 检查日期是否有效
+        if (isNaN(createdDate.getTime())) {
+          return false
+        }
 
-    // 按添加时间排序，最新的在前面
-    return recentData
-      .sort((a, b) => {
-        const timeA = new Date(a.createdAt || a.updatedAt)
-        const timeB = new Date(b.createdAt || b.updatedAt)
-        return timeB - timeA
+        createdDate.setHours(0, 0, 0, 0)
+        return createdDate >= sevenDaysAgo
+      }).map(item => {
+        const itemId = item._id || item.id
+        return {
+          id: itemId,
+          name: item.name,
+          image: getItemImage(item.name, item.category),
+          expiryDays: calculateExpiryDays(item.expireDate),
+          category: item.category,
+          expireDate: item.expireDate,
+          storageLocation: item.storageLocation,
+          createdAt: item.createdAt,
+          addedDate: new Date(item.createdAt || item.updatedAt).toLocaleDateString('zh-CN'),
+          isTakenOut: false // 当前食材未取出
+        }
       })
-      .map(item => ({
-        id: item._id || item.id,
-        name: item.name,
-        image: getItemImage(item.name, item.category),
-        expiryDays: calculateExpiryDays(item.expireDate),
-        category: item.category,
-        expireDate: item.expireDate,
-        storageLocation: item.storageLocation,
-        createdAt: item.createdAt,
-        addedDate: new Date(item.createdAt || item.updatedAt).toLocaleDateString('zh-CN')
-      }))
+
+      allItems.push(...currentFoods)
+    }
+
+    // 2. 添加已取出的食材（只包含最近7天添加的）
+    if (takenOutFoods.value && takenOutFoods.value.length > 0) {
+      const recentTakenOutFoods = takenOutFoods.value.filter(item => {
+        // 检查是否有有效的创建时间
+        if (!item.createdAt && !item.updatedAt) {
+          return false
+        }
+
+        // 优先使用createdAt，如果没有则使用updatedAt
+        const timeField = item.createdAt || item.updatedAt
+        const createdDate = new Date(timeField)
+
+        // 检查日期是否有效
+        if (isNaN(createdDate.getTime())) {
+          return false
+        }
+
+        createdDate.setHours(0, 0, 0, 0)
+        return createdDate >= sevenDaysAgo
+      }).map(item => {
+        const itemId = item._id || item.id
+        return {
+          id: itemId,
+          name: item.name,
+          image: item.image || getItemImage(item.name, item.category), // 优先使用已保存的图片
+          expiryDays: calculateExpiryDays(item.expireDate),
+          category: item.category,
+          expireDate: item.expireDate,
+          storageLocation: item.storageLocation,
+          createdAt: item.createdAt,
+          addedDate: new Date(item.createdAt || item.updatedAt).toLocaleDateString('zh-CN'),
+          isTakenOut: true // 已取出的食材
+        }
+      })
+
+      allItems.push(...recentTakenOutFoods)
+    }
+
+    // 3. 去重（防止同一食材既在当前列表又在已取出列表中）
+    const uniqueItems = []
+    const seenIds = new Set()
+
+    for (const item of allItems) {
+      if (!seenIds.has(item.id)) {
+        seenIds.add(item.id)
+        uniqueItems.push(item)
+      } else {
+        // 如果ID重复，优先保留已取出的版本
+        const existingIndex = uniqueItems.findIndex(existing => existing.id === item.id)
+        if (existingIndex !== -1 && item.isTakenOut) {
+          uniqueItems[existingIndex] = item
+        }
+      }
+    }
+
+    // 4. 按添加时间排序，最新的在前面
+    return uniqueItems.sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.updatedAt)
+      const timeB = new Date(b.createdAt || b.updatedAt)
+      return timeB - timeA
+    })
   }
 
   // 获取最近添加的食材（根据展开状态显示不同数量）
@@ -944,6 +1013,14 @@ export const useIndexStore = defineStore('index', () => {
 
   // 最近添加项点击处理
   const handleRecentItemClick = (item, router) => {
+    // 如果食材已被取出，显示提示信息
+    if (item.isTakenOut) {
+      showToast({
+        message: `${item.name} 已取出，无法查看详情`,
+        type: 'warning'
+      })
+      return
+    }
 
     // 将食品数据存储到缓存中
     const cacheKey = `food_${item.id}`
@@ -1155,6 +1232,7 @@ export const useIndexStore = defineStore('index', () => {
     getRecipesByIngredient,
     getRecipeById,
     getCategoryIdByFoodCategory,
+    isFoodTakenOut,
 
     // 异步操作
     loadFoodData,

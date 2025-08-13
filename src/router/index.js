@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { ROUTE_NAMES } from '@/constants'
+import { ROUTE_NAMES } from '@/constants' //导入constants配置好的路由名称
 
 // 定义路由
 const routes = [
@@ -13,7 +13,7 @@ const routes = [
     path: '/computed',
     name: ROUTE_NAMES.COMPUTED,
     component: () => import('@/views/Computed.vue'),
-    meta: { 
+    meta: {
       title: '统计',
       hideHeader: true
     }
@@ -22,29 +22,29 @@ const routes = [
     path: '/addfoot',
     name: ROUTE_NAMES.ADDFOOT,
     component: () => import('@/views/Addfoot.vue'),
-    meta: { 
-      title: '添加食材', 
-      hideHeader: true 
+    meta: {
+      title: '添加食材',
+      hideHeader: true
     }
   },
   {
     path: '/foodmap',
     name: ROUTE_NAMES.FOOD_MAP,
     component: () => import('@/views/FoodMap.vue'),
-    meta: { 
+    meta: {
       title: '存放位置',
-      hideHeader: true 
+      hideHeader: true
     }
   },
   {
     path: '/mine',
     name: ROUTE_NAMES.MINE,
     component: () => import('@/views/Mine.vue'),
-    meta: { 
+    meta: {
       title: '我的',
       hideHeader: true,
       hideTabBar: true
-    }
+    },
   },
   {
     path: '/food-detail/:id',
@@ -89,6 +89,26 @@ const routes = [
       hideTabBar: true
     },
     props: true
+  },
+  {
+    path: '/personal-information',
+    name: ROUTE_NAMES.PERSONAL_INFORMATION,
+    component: () => import('@/components/mine/PersonalInformation.vue'),
+    meta: {
+      title: '个人信息',
+      hideHeader: true,
+      hideTabBar: true
+    }
+  },
+  {
+    path: '/auth',
+    name: ROUTE_NAMES.AUTH,
+    component: () => import('@/views/Auth.vue'),
+    meta: {
+      title: '登录注册',
+      hideHeader: true,
+      hideTabBar: true
+    }
   }
 ]
 

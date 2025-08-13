@@ -26,7 +26,9 @@ export const ROUTE_NAMES = {
   FOOD_DETAIL: 'FoodDetail',
   CATEGORY_DETAIL: 'CategoryDetail',
   RECIPE_DETAIL: 'RecipeDetail',
-  INGREDIENT_RECIPES: 'IngredientRecipes'
+  INGREDIENT_RECIPES: 'IngredientRecipes',
+  PERSONAL_INFORMATION: 'PersonalInformation',
+  AUTH: 'Auth'
 }
 
 // 食材过期状态

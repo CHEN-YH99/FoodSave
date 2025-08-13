@@ -130,10 +130,67 @@ export const foodService = {
 }
 
 /**
- * 用户相关API（预留）
+ * 用户相关API
  */
 export const userApi = {
-  // 用户相关API方法
+  /**
+   * 用户注册
+   * @param {Object} userData - 用户注册数据
+   */
+  async register(userData) {
+    const response = await apiClient.post('/auth/register', userData)
+    return response.data
+  },
+
+  /**
+   * 用户登录
+   * @param {Object} credentials - 登录凭据
+   */
+  async login(credentials) {
+    const response = await apiClient.post('/auth/login', credentials)
+    return response.data
+  },
+
+  /**
+   * 获取用户信息
+   * @param {string} userId - 用户ID
+   */
+  async getUserInfo(userId) {
+    const response = await apiClient.get(`/users/${userId}`)
+    return response.data
+  },
+
+  /**
+   * 更新用户信息
+   * @param {string} userId - 用户ID
+   * @param {Object} userData - 更新的用户数据
+   */
+  async updateUserInfo(userId, userData) {
+    const response = await apiClient.put(`/users/${userId}`, userData)
+    return response.data
+  },
+
+  /**
+   * 上传用户头像
+   * @param {string} userId - 用户ID
+   * @param {FormData} formData - 头像文件数据
+   */
+  async uploadAvatar(userId, formData) {
+    const response = await apiClient.post(`/users/${userId}/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response.data
+  },
+
+  /**
+   * 验证token
+   */
+  async verifyToken() {
+    const response = await apiClient.get('/auth/verify')
+    return response.data
+  }
 }
 
 /**
