@@ -66,6 +66,23 @@
       </div>
     </div>
 
+    <div class="fridge-overlay" v-if="occupancyData && occupancyData.length" style="margin-top:12px; display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;">
+      <div v-for="s in occupancyData" :key="s.location" class="shelf-card" style="background: rgba(255,255,255,0.9); border:1px solid #eaeaea; border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+        <div class="shelf-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span class="name" style="font-weight:600; color:#2c3e50;">{{ s.location }}</span>
+          <span class="ratio" style="font-size:12px; color:#666;">{{ s.count }}/{{ s.capacity }}</span>
+        </div>
+        <div class="progress" style="width:100%; height:6px; background:#f1f3f5; border-radius:6px; overflow:hidden; margin-bottom:6px;">
+          <div class="bar" :style="{ width: s.percent + '%', height: '100%', background: s.percent >= 90 ? '#e74c3c' : s.percent >= 70 ? '#ff9500' : '#21a946' }"></div>
+        </div>
+        <div class="items" style="display:flex; flex-wrap:wrap; gap:6px;">
+          <span v-for="f in s.items.slice(0,6)" :key="f.id || f._id" class="chip" style="background:#f8f9fa; color:#333; border:1px solid #e9ecef; border-radius: 10px; padding: 2px 8px; font-size:12px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            {{ f.name }}
+          </span>
+        </div>
+      </div>
+    </div>
+
     <!-- 食物信息面板 -->
     <div class="food-info-panel" v-if="selectedFood" @click="selectedFood = null">
       <div class="food-info-content" @click.stop>
@@ -107,10 +124,11 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { foodService } from '@/services/api'
 
 export default {
   setup() {
@@ -139,12 +157,125 @@ export default {
 
     // 食物数据和3D对象
     const foodData = ref([])
+
+    // 3D仓位容量与锚点映射（仅本文件使用，最小侵入）
+    const capacityMap = {
+      冷藏室: 30,
+      冷冻室: 20,
+      果蔬盒: 15,
+      门搁架: 12,
+      未分配: 10
+    }
+
+    const anchorMap = {
+      冷藏室: new THREE.Vector3(0, 1.2, 0),
+      冷冻室: new THREE.Vector3(0, 0.3, 0),
+      果蔬盒: new THREE.Vector3(0, 0.8, 0.4),
+      门搁架: new THREE.Vector3(0.9, 1.0, 0),
+      未分配: new THREE.Vector3(0, 0.6, 0)
+    }
+
+    const dataLoaded = ref(false)
+
+    const normalizeLocation = (loc) => {
+      if (!loc) return '未分配'
+      const s = String(loc).toLowerCase()
+      if (s.includes('冷冻')) return '冷冻室'
+      if (s.includes('冷藏')) return '冷藏室'
+      if (s.includes('蔬') || s.includes('果')) return '果蔬盒'
+      if (s.includes('门')) return '门搁架'
+      return '未分配'
+    }
+
+    const groupByLocation = (list) => {
+      const map = new Map()
+      list.forEach((f) => {
+        const key = normalizeLocation(f.storageLocation)
+        if (!map.has(key)) map.set(key, [])
+        map.get(key).push(f)
+      })
+      return Array.from(map.entries()).map(([location, items]) => ({ location, items }))
+    }
+
+    const occupancyData = computed(() => {
+      const groups = groupByLocation(foodData.value || [])
+      return groups.map(g => {
+        const cap = capacityMap[g.location] ?? 10
+        const count = g.items.length
+        const percent = Math.max(0, Math.min(100, Math.round(count * 100 / cap)))
+        return { location: g.location, capacity: cap, count, percent, items: g.items }
+      })
+    })
+
+    const getShelfAnchor = (loc) => {
+      const key = normalizeLocation(loc)
+      return anchorMap[key] || anchorMap['未分配']
+    }
+
+    const clearDynamicFoods = () => {
+      if (dynamicFoodGroup && scene) {
+        scene.remove(dynamicFoodGroup)
+      }
+      dynamicFoodGroup = new THREE.Group()
+      dynamicFoodGroup.name = 'DynamicFoods'
+      scene && scene.add(dynamicFoodGroup)
+      foodObjects.value && foodObjects.value.clear && foodObjects.value.clear()
+    }
+
+    const renderFoodsIn3D = () => {
+      if (!scene) return
+      clearDynamicFoods()
+      const geometry = new THREE.SphereGeometry(0.05, 16, 16)
+      ;(foodData.value || []).forEach((f, idx) => {
+        const anchor = getShelfAnchor(f.storageLocation)
+        // 轻微抖动分散
+        const jitter = () => (Math.random() - 0.5) * 0.25
+        const material = new THREE.MeshStandardMaterial({
+          color: f.isTakenOut ? 0x9e9e9e : 0x21a946,
+          roughness: 0.6,
+          metalness: 0.1
+        })
+        const mesh = new THREE.Mesh(geometry, material)
+        mesh.position.set(anchor.x + jitter(), anchor.y + jitter(), anchor.z + jitter())
+        mesh.castShadow = true
+        mesh.receiveShadow = false
+        mesh.userData.food = f
+        dynamicFoodGroup.add(mesh)
+        if (foodObjects.value instanceof Map) {
+          foodObjects.value.set(f.id || f._id || idx, mesh)
+        }
+      })
+    }
+
+    const tryRenderFoods = () => {
+      if (!loading.value && (foodData.value?.length || 0) > 0) {
+        renderFoodsIn3D()
+      }
+    }
+
+    const loadFoods = async () => {
+      try {
+        const res = await foodService.getAllFoods()
+        const list = Array.isArray(res) ? res : (res?.data || [])
+        foodData.value = list
+        dataLoaded.value = true
+        tryRenderFoods()
+      } catch (e) {
+        console.error('获取食材数据失败', e)
+      }
+    }
     const foodObjects = ref(new Map()) // 存储食物3D对象的映射
     let dynamicFoodGroup = null // 动态食物组
 
     onMounted(() => {
       initThreeJS()
       loadFridgeModel()
+      loadFoods()
+      watch(loading, (val) => {
+        if (val === false) {
+          tryRenderFoods()
+        }
+      })
       loadFoodData()
     })
 
@@ -2789,6 +2920,7 @@ export default {
 
     return {
       canvasContainer,
+      occupancyData,
       loading,
       error,
       isHintCollapsed,

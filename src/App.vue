@@ -2,11 +2,13 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useIndexStore } from '@/store/index';
+import { useAuthStore } from '@/store/auth';
 import Head from './components/common/Head.vue'
 import TabBar from './components/common/TabBar.vue'
 
 const route = useRoute();
 const store = useIndexStore();
+const authStore = useAuthStore();
 
 // 控制海报显示的状态
 const showPoster = ref(true);
@@ -26,7 +28,16 @@ const skipPoster = () => {
 };
 
 // 组件挂载后设置一个定时器，5秒后自动跳过
-onMounted(() => {
+onMounted(async () => {
+  // 初始化认证状态
+  if (authStore.token && !authStore.user) {
+    try {
+      await authStore.verifyToken();
+    } catch (error) {
+      console.log('Token验证失败，可能已过期');
+    }
+  }
+  
   // 初始化已取出记录
   store.loadTakenOutFoods();
   

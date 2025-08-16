@@ -11,7 +11,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 计算属性
   const isAuthenticated = computed(() => !!token.value && !!user.value)
-  const userInfo = computed(() => user.value || {})
+  const userInfo = computed(() => {
+    if (!user.value) return {}
+    return {
+      ...user.value,
+      _id: user.value._id || user.value.id,
+      id: user.value.id || user.value._id
+    }
+  })
 
   // 设置token到请求头
   const setAuthToken = (newToken, rememberMe = false) => {
@@ -22,8 +29,15 @@ export const useAuthStore = defineStore('auth', () => {
         const expiryTime = Date.now() + (7 * 24 * 60 * 60 * 1000) // 7天
         localStorage.setItem('token', newToken)
         localStorage.setItem('tokenExpiry', expiryTime.toString())
+        localStorage.setItem('rememberMe', 'true')
+        
+        // 设置cookie，7天过期
+        document.cookie = `token=${newToken}; expires=${new Date(expiryTime).toUTCString()}; path=/`
       } else {
         localStorage.setItem('token', newToken)
+        localStorage.removeItem('rememberMe')
+        // 设置session cookie
+        document.cookie = `token=${newToken}; path=/`
       }
       // 设置axios默认请求头
       import('@/services/api').then(({ default: apiClient }) => {
@@ -32,6 +46,9 @@ export const useAuthStore = defineStore('auth', () => {
     } else {
       localStorage.removeItem('token')
       localStorage.removeItem('tokenExpiry')
+      localStorage.removeItem('rememberMe')
+      // 清除cookie
+      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
       // 移除axios默认请求头
       import('@/services/api').then(({ default: apiClient }) => {
         delete apiClient.defaults.headers.common['Authorization']
@@ -46,15 +63,35 @@ export const useAuthStore = defineStore('auth', () => {
     return Date.now() > parseInt(expiryTime)
   }
 
+  // 从cookie获取token
+  const getTokenFromCookie = () => {
+    const cookies = document.cookie.split(';')
+    for (let cookie of cookies) {
+      const [name, value] = cookie.trim().split('=')
+      if (name === 'token') {
+        return value
+      }
+    }
+    return null
+  }
+
   // 初始化时设置token
   if (token.value) {
     if (!isTokenExpired()) {
-      setAuthToken(token.value)
+      const rememberMe = localStorage.getItem('rememberMe') === 'true'
+      setAuthToken(token.value, rememberMe)
     } else {
       // token过期，清除
       token.value = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('tokenExpiry')
+      setAuthToken(null)
+    }
+  } else {
+    // 尝试从cookie获取token
+    const cookieToken = getTokenFromCookie()
+    if (cookieToken) {
+      token.value = cookieToken
+      localStorage.setItem('token', cookieToken)
+      setAuthToken(cookieToken)
     }
   }
 
@@ -118,11 +155,12 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await userApi.getUserInfo(userId)
       if (response.success) {
-        user.value = response.user
-        return response.user
+        user.value = response.data.user
+        return response.data.user
       }
     } catch (error) {
       console.error('获取用户信息失败:', error)
+      return null
     }
   }
 
@@ -133,14 +171,21 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await userApi.updateUserInfo(userId, userData)
       
       if (response.success) {
-        user.value = { ...user.value, ...response.data.user }
+        // 确保正确更新用户信息，包括ID字段
+        const updatedUser = {
+          ...user.value,
+          ...response.data.user,
+          _id: response.data.user._id || response.data.user.id || user.value._id,
+          id: response.data.user.id || response.data.user._id || user.value.id
+        }
+        user.value = updatedUser
         
         showToast({
           message: '更新成功',
           type: 'success'
         })
         
-        return { success: true, user: response.data.user }
+        return { success: true, user: updatedUser }
       } else {
         throw new Error(response.message || '更新失败')
       }

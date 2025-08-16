@@ -176,7 +176,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router' //这里使用局部导入，方便维护
 import { useAuthStore } from '@/store/auth'
 import { showToast, showConfirmDialog, showNotify } from 'vant'
@@ -238,7 +238,7 @@ const defaultAvatars = [
 
 // 用户头像
 const userAvatar = computed(() => {
-  if (authStore.isAuthenticated && authStore.userInfo.avatar) {
+  if (authStore.isAuthenticated && authStore.userInfo.avatar && authStore.userInfo.avatar.trim() !== '') {
     return authStore.userInfo.avatar
   } else if (authStore.isAuthenticated) {
     // 根据用户ID随机分配默认头像
@@ -397,6 +397,14 @@ const logout = () => {
   })
 }
 
+// 监听用户信息变化，实时更新页面
+watch(() => authStore.userInfo, (newUserInfo) => {
+  if (newUserInfo) {
+    // 用户信息更新时，可以在这里执行一些额外的逻辑
+    // console.log('用户信息已更新:', newUserInfo)
+  }
+}, { deep: true })
+
 // 页面初始化
 onMounted(async () => {
   // 如果有token但没有用户信息，尝试验证token
@@ -405,6 +413,15 @@ onMounted(async () => {
       await authStore.verifyToken()
     } catch (error) {
       console.log('Token验证失败，可能已过期')
+    }
+  }
+  
+  // 如果已登录，获取最新用户信息
+  if (authStore.isAuthenticated && authStore.userInfo) {
+    try {
+      await authStore.fetchUserInfo(authStore.userInfo._id)
+    } catch (error) {
+      console.log('获取用户信息失败:', error)
     }
   }
 })

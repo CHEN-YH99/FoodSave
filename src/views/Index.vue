@@ -85,8 +85,12 @@
                 </div>
                 <div class="item-expiry" :style="{ color: store.getExpiryColor(item.expiryDays) }">
                   <van-icon name="clock-o" size="12" />
-                  {{ item.expiryDays <= 0 ? '已过期' : item.expiryDays === 1 ? '明天过期' : `${item.expiryDays}天后过期` }} </div>
+                  {{ item.expiryDays <= 0 ? '已过期' : item.expiryDays === 1 ? '明天过期' : `${item.expiryDays}天后过期` }}
                 </div>
+                <div class="item-added-time">
+                  添加时间：{{ formatToSecond(item.createdAt || item.updatedAt || item.addedDate) }}
+                </div>
+              </div>
             </template>
             <template #right-icon>
               <van-icon name="ellipsis" color="#c8c9cc" size="18" />
@@ -118,11 +122,14 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
+import { useAuthStore } from '@/store/auth'
+import { showConfirmDialog } from 'vant'
 import SmartRecommendation from '@/components/business/SmartRecommendation.vue'
 
 // 使用router和store
 const router = useRouter()
 const store = useIndexStore()
+const authStore = useAuthStore()
 
 // 模板引用
 const categoriesContainer = ref(null)
@@ -187,9 +194,66 @@ const handleSearchResultSelected = (event) => {
   }
 }
 
+// 检查登录状态并显示提示
+const checkLoginStatus = async () => {
+  // 延迟检查，让页面先渲染，并确保认证状态已经初始化
+  setTimeout(async () => {
+    // 如果有token但没有用户信息，先尝试验证token
+    if (authStore.token && !authStore.user) {
+      try {
+        await authStore.verifyToken()
+      } catch (error) {
+        console.log('Token验证失败')
+      }
+    }
+    
+    // 再次检查认证状态
+    if (!authStore.isAuthenticated) {
+      try {
+        const result = await showConfirmDialog({
+          title: '欢迎使用鲜存',
+          message: '登录后可以享受完整的食材管理功能，包括添加食材、查看统计、个人中心等。',
+          confirmButtonText: '立即登录',
+          cancelButtonText: '稍后再说',
+          confirmButtonColor: 'rgba(0, 150, 5, 0.8)',
+          cancelButtonColor: '#969799'
+        })
+        
+        if (result === 'confirm') {
+          router.push('/auth')
+        }
+      } catch (error) {
+        // 用户点击了取消或关闭
+        console.log('用户选择稍后登录')
+      }
+    }
+  }, 2000) // 2秒后显示提示，给足够时间让认证状态初始化
+}
+
+/**
+ * 工具：格式化到秒的时间展示
+ * 支持 ISO 字符串/时间戳/可被 Date 解析的字符串
+ */
+const formatToSecond = (value) => {
+  if (!value) return '未知'
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return '未知'
+  const pad = (n) => String(n).padStart(2, '0')
+  const Y = date.getFullYear()
+  const M = pad(date.getMonth() + 1)
+  const D = pad(date.getDate())
+  const h = pad(date.getHours())
+  const m = pad(date.getMinutes())
+  const s = pad(date.getSeconds())
+  return `${Y}-${M}-${D} ${h}:${m}:${s}`
+}
+
 // 页面挂载时加载数据
-onMounted(() => {
+onMounted(async () => {
   loadFoodData()
+  
+  // 检查登录状态
+  checkLoginStatus()
 
   // 监听搜索结果选择事件
   window.addEventListener('searchResultSelected', handleSearchResultSelected)
@@ -807,6 +871,12 @@ onUnmounted(() => {
         align-items: center;
         gap: 4px;
         font-weight: 500;
+      }
+
+      .item-added-time {
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
       }
     }
   }

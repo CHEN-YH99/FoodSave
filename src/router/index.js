@@ -117,5 +117,38 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
+
+// 路由守卫 - 登录鉴权
+router.beforeEach(async (to, from, next) => {
+  // 导入认证store
+  const { useAuthStore } = await import('@/store/auth')
+  const authStore = useAuthStore()
+  
+  // 不需要登录验证的页面（允许未登录访问）
+  const publicPages = ['/auth', '/']
+  const isPublicPage = publicPages.includes(to.path)
+  
+  // 如果是公开页面，直接放行
+  if (isPublicPage) {
+    next()
+    return
+  }
+  
+  // 检查是否有token
+  if (!authStore.token) {
+    next('/auth')
+    return
+  }
+  
+  // 验证token有效性
+  const isValid = await authStore.verifyToken()
+  if (!isValid) {
+    next('/auth')
+    return
+  }
+  
+  next()
+})
+
 // 导出路由实例
 export default router

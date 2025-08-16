@@ -34,18 +34,22 @@
             <!-- 登录表单 -->
             <div class="form-container">
               <van-form @submit="handleLogin" ref="loginForm">
-                <van-field v-model="loginFormData.username" name="username" label="用户名" placeholder="请输入用户名或邮箱"
-                  :rules="[{ required: true, message: '请输入用户名或邮箱' }]" left-icon="contact" clearable />
+                <van-field v-model="loginFormData.username" name="username" label="账号" placeholder="请输入用户名/手机号/邮箱"
+                  :rules="[{ required: true, message: '请输入用户名/手机号/邮箱' }]" left-icon="contact" clearable />
                 <van-field v-model="loginFormData.password" type="password" name="password" label="密码"
                   placeholder="请输入密码" :rules="[{ required: true, message: '请输入密码' }]" left-icon="lock" clearable />
 
                 <div class="form-footer">
-                  <van-checkbox v-model="rememberMe">我同意用户协议</van-checkbox>
+                  <van-checkbox v-model="agreeLogin">我同意用户协议</van-checkbox>
                   <span class="forgot-password" @click="showForgotPassword">忘记密码？</span>
                 </div>
 
+                <div class="remember-me-section">
+                  <van-checkbox v-model="rememberMe">七天免登录</van-checkbox>
+                </div>
+
                 <van-button round block type="primary" native-type="submit" :loading="authStore.loading"
-                  :disabled="!rememberMe" class="submit-btn">
+                  :disabled="!agreeLogin" class="submit-btn">
                   登录
                 </van-button>
               </van-form>
@@ -206,6 +210,7 @@ const forgotPasswordForm = reactive({
 
 // 控制状态
 const rememberMe = ref(false)
+const agreeLogin = ref(false)
 const agreeTerms = ref(false)
 const showForgotPasswordDialog = ref(false)
 const showTermsDialog = ref(false)
@@ -277,7 +282,7 @@ const handleLogin = async () => {
   const result = await authStore.login({
     username: loginFormData.username,
     password: loginFormData.password,
-    rememberMe: true // 七天免登录
+    rememberMe: rememberMe.value // 根据用户选择决定是否七天免登录
   })
 
   if (result.success) {
@@ -890,6 +895,27 @@ const handleSocialLogin = (platform) => {
       &:hover {
         color: rgba(0, 150, 5, 1);
         text-decoration: underline;
+      }
+    }
+  }
+
+  .remember-me-section {
+    margin: 15px 0 25px;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #f8fffe 0%, #f0fff0 100%);
+    border-radius: 12px;
+    border: 1px solid rgba(0, 150, 5, 0.1);
+
+    :deep(.van-checkbox) {
+      .van-checkbox__icon--checked {
+        background-color: rgba(0, 150, 5, 0.8);
+        border-color: rgba(0, 150, 5, 0.8);
+      }
+
+      .van-checkbox__label {
+        color: rgba(0, 150, 5, 0.7);
+        font-weight: 500;
+        font-size: 14px;
       }
     }
   }

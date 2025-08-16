@@ -18,9 +18,13 @@
       <!-- 信息表单 -->
       <div class="form-section">
         <van-cell-group inset>
+          <van-field v-model="userInfo.username" label="用户名" placeholder="请输入用户名" clearable 
+            :rules="usernameRules" />
           <van-field v-model="userInfo.nickname" label="昵称" placeholder="请输入昵称" clearable />
-          <van-field v-model="userInfo.phone" label="手机号" placeholder="请输入手机号" type="tel" clearable />
-          <van-field v-model="userInfo.email" label="邮箱" placeholder="请输入邮箱" type="email" clearable />
+          <van-field v-model="userInfo.phone" label="手机号" placeholder="请输入手机号" type="tel" clearable 
+            :rules="phoneRules" />
+          <van-field v-model="userInfo.email" label="邮箱" placeholder="请输入邮箱" type="email" clearable 
+            :rules="emailRules" />
           <van-field v-model="userInfo.bio" label="个人简介" placeholder="请输入个人简介" type="textarea" rows="3" maxlength="100"
             show-word-limit />
         </van-cell-group>
@@ -68,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/auth'
 import { showToast, showConfirmDialog } from 'vant'
@@ -86,6 +90,7 @@ const authStore = useAuthStore()
 
 // 用户信息 - 从store中获取
 const userInfo = ref({
+  username: '',
   nickname: '',
   phone: '',
   email: '',
@@ -116,6 +121,23 @@ const showAvatarPicker = ref(false)
 const selectedAvatarIndex = ref(-1)
 const fileList = ref([])
 const uploader = ref(null)
+
+// 表单验证规则
+const usernameRules = [
+  { required: true, message: '请输入用户名' },
+  { min: 3, max: 20, message: '用户名长度为3-20个字符' },
+  { pattern: /^[a-zA-Z0-9_]+$/, message: '用户名只能包含字母、数字和下划线' }
+]
+
+const emailRules = [
+  { required: true, message: '请输入邮箱地址' },
+  { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: '请输入正确的邮箱格式' }
+]
+
+const phoneRules = [
+  { required: true, message: '请输入手机号' },
+  { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式' }
+]
 
 // 头像操作选项
 const avatarActions = [
@@ -258,9 +280,33 @@ const saveUserInfo = async () => {
   }
 
   // 验证必填字段
+  if (!userInfo.value.username.trim()) {
+    showToast({
+      message: '请输入用户名',
+      type: 'fail'
+    })
+    return
+  }
+  
   if (!userInfo.value.nickname.trim()) {
     showToast({
       message: '请输入昵称',
+      type: 'fail'
+    })
+    return
+  }
+  
+  if (!userInfo.value.phone.trim()) {
+    showToast({
+      message: '请输入手机号',
+      type: 'fail'
+    })
+    return
+  }
+  
+  if (!userInfo.value.email.trim()) {
+    showToast({
+      message: '请输入邮箱',
       type: 'fail'
     })
     return
@@ -270,6 +316,7 @@ const saveUserInfo = async () => {
 
   try {
     const result = await authStore.updateUserInfo(authStore.userInfo._id, {
+      username: userInfo.value.username.trim(),
       nickname: userInfo.value.nickname.trim(),
       phone: userInfo.value.phone.trim(),
       email: userInfo.value.email.trim(),
@@ -302,18 +349,51 @@ const saveUserInfo = async () => {
 }
 
 // 初始化用户信息
-const initUserInfo = () => {
+const initUserInfo = async () => {
   if (authStore.isAuthenticated && authStore.userInfo) {
-    const info = {
-      nickname: authStore.userInfo.nickname || '',
-      phone: authStore.userInfo.phone || '',
-      email: authStore.userInfo.email || '',
-      bio: authStore.userInfo.bio || '热爱生活，减少浪费，让每一份食材都发挥最大价值！'
+    // 从数据库获取最新用户信息
+    try {
+      const latestUser = await authStore.fetchUserInfo(authStore.userInfo._id)
+      if (latestUser) {
+        const info = {
+          username: latestUser.username || '',
+          nickname: latestUser.nickname || '',
+          phone: latestUser.phone || '',
+          email: latestUser.email || '',
+          bio: latestUser.bio || '热爱生活，减少浪费，让每一份食材都发挥最大价值！'
+        }
+        userInfo.value = info
+        originalUserInfo.value = { ...info } // 保存原始信息
+      }
+    } catch (error) {
+      // 如果获取失败，使用store中的信息
+      const info = {
+        username: authStore.userInfo.username || '',
+        nickname: authStore.userInfo.nickname || '',
+        phone: authStore.userInfo.phone || '',
+        email: authStore.userInfo.email || '',
+        bio: authStore.userInfo.bio || '热爱生活，减少浪费，让每一份食材都发挥最大价值！'
+      }
+      userInfo.value = info
+      originalUserInfo.value = { ...info }
     }
-    userInfo.value = info
-    originalUserInfo.value = { ...info } // 保存原始信息
   }
 }
+
+// 监听store中用户信息的变化，实时更新页面
+watch(() => authStore.userInfo, (newUserInfo) => {
+  if (newUserInfo) {
+    const info = {
+      username: newUserInfo.username || '',
+      nickname: newUserInfo.nickname || '',
+      phone: newUserInfo.phone || '',
+      email: newUserInfo.email || '',
+      bio: newUserInfo.bio || '热爱生活，减少浪费，让每一份食材都发挥最大价值！'
+    }
+    userInfo.value = info
+    originalUserInfo.value = { ...info }
+  }
+}, { deep: true })
 
 // 检查登录状态
 const checkAuthStatus = async () => {
@@ -339,7 +419,7 @@ const checkAuthStatus = async () => {
 onMounted(async () => {
   const isAuthenticated = await checkAuthStatus()
   if (isAuthenticated) {
-    initUserInfo()
+    await initUserInfo()
   }
 })
 </script>
