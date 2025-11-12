@@ -56,6 +56,30 @@ src/
     └── style/            # 样式文件
 ```
 
+## 数据库与数据表
+
+- 数据库: MongoDB，库名 `food_management`
+- 连接: 默认 `mongodb://localhost:27017/food_management`；支持环境变量：
+  - `MONGO_URI`、`MONGO_DB`、`MONGO_USER`、`MONGO_PASS`、`MONGO_AUTH_SOURCE`
+  - `MONGO_SERVER_SELECTION_TIMEOUT_MS`、`MONGO_SOCKET_TIMEOUT_MS`、`MONGO_MAX_RETRIES`
+  - `JWT_SECRET`（认证）
+- 集合与字段：
+  - `users`: `username`、`email`、`phone`、`password`、`nickname`、`avatar`、`bio`、`createdAt`、`updatedAt`
+  - `foods`: `name`、`category`、`storageLocation`、`purchaseDate`、`shelfLife`、`expireDate`、`quantity`、`unit`、`synonyms[]`、`description`、`nutritionInfo{calories,protein,carbs,fat}`、`createdAt`、`updatedAt`
+- 索引:
+  - `foods` 文本索引：`name`、`category`、`storageLocation`、`synonyms`
+  - 普通索引：`name`、`category`
+- 健康检查:
+  - `GET /api/health/db` 返回连接状态与文档计数
+- 连接测试（Windows）:
+  - 后端: 双击 `start-server.bat` 或执行 `node server/app.js`
+  - 验证: 访问 `http://localhost:3001/api/health/db`
+  - Mongosh: `mongosh "mongodb://localhost:27017/food_management" --eval "db.users.countDocuments(); db.foods.countDocuments();"`
+
+- 常用API（后端）：
+  - 食材：`GET /api/food`、`GET /api/food/search?q=...`、`GET /api/food/suggestions?q=...`、`POST /api/food`、`PUT /api/food/:id`、`DELETE /api/food/:id`
+  - 用户：`POST /api/auth/login`、`POST /api/register`、`GET /api/users/:userId`、`PUT /api/users/:userId`
+
 ## 核心功能
 
 ### 1. 食材管理
@@ -122,24 +146,33 @@ yarn install
 ```
 
 ### 开发运行
-```bash(前端)
-
-# 只运行项目
+```bash
+# 前端
 npm run dev
 # 或
 pnpm run dev
-
-# 启动食材数据库服务器
-pnpm run dev:full
-
 ```
-```bash(后端:启动登录注册服务器)
+
+```bash
+# 后端（Windows）
+# 推荐：双击 start-server.bat
+start-server.bat
+
+# 或命令行启动
 pnpm run server
-
-# 完整启动(数据库 + API服务器)
-1.pnpm run dev:full
+# 或
+node server/app.js
 ```
-2.pnpm run server
+
+```bash
+# 完整启动（后端 + 前端）
+# 先启动后端，再运行前端
+start-server.bat
+pnpm run dev
+
+# 或使用项目脚本
+pnpm run dev:full
+```
 
 ### 构建部署
 ```bash
