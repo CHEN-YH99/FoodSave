@@ -51,6 +51,16 @@
           </span>
         </div>
 
+        <van-overlay :show="filteredFoods.length > 0 && showGestureHint" :lock-scroll="true" :z-index="2000" class="guide-overlay" @click="showGestureHint=false">
+          <div class="guide-content">
+            <div class="guide-tooltip">
+              <van-icon name="arrow-left" size="14" color="#1989fa" />
+              <span>向左滑动条目可“取出”</span>
+            </div>
+            <div class="guide-hand"></div>
+          </div>
+        </van-overlay>
+
         <div class="food-items" v-if="filteredFoods.length > 0">
           <van-swipe-cell v-for="food in filteredFoods" :key="food.id" class="swipe-cell"
             :class="{ 'highlighted': shouldHighlight(food) }">
@@ -205,7 +215,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
 import { showToast, showConfirmDialog } from 'vant'
@@ -231,6 +241,8 @@ const sortOptions = [
 const pageSize = ref(10) // 每页显示数量
 const currentPage = ref(1) // 当前页码
 const showAllFoods = ref(false) // 是否显示所有食品
+const showGestureHint = ref(false)
+let gestureHintTimer = null
 
 // 判断是分类模式还是单个食品详情模式
 const isCategoryMode = computed(() => {
@@ -355,6 +367,7 @@ const handleTakeOut = async (food) => {
     })
 
     // 用户确认后，添加加载状态
+    showGestureHint.value = false
     takingOutIds.value.add(foodId)
 
     // 执行取出操作
@@ -413,6 +426,7 @@ const handleSortChange = (value) => {
 
 // 查看更多食品
 const handleLoadMore = () => {
+  showGestureHint.value = false
   showAllFoods.value = true
 }
 
@@ -577,10 +591,22 @@ onMounted(async () => {
   // 初始化数据
   await initData()
 
+  // 分类模式进入且有数据时，显示一次性遮罩引导
+  if (isCategoryMode.value && filteredFoods.value.length > 0) {
+    showGestureHint.value = true
+    gestureHintTimer = setTimeout(() => { showGestureHint.value = false }, 6000)
+  }
+
   // 调试：如果是分类模式，打印调试信息
   if (isCategoryMode.value) {
     // 调试分类匹配情况
     store.debugCategoryFoods(categoryInfo.value.id)
+  }
+})
+onUnmounted(() => {
+  if (gestureHintTimer) {
+    clearTimeout(gestureHintTimer)
+    gestureHintTimer = null
   }
 })
 </script>
@@ -1138,6 +1164,12 @@ onMounted(async () => {
     }
   }
 }
+
+.guide-overlay { background: rgba(0, 0, 0, 0.35); }
+.guide-content { position: fixed; bottom: 110px; left: 20px; right: 20px; display: flex; align-items: center; gap: 12px; }
+.guide-tooltip { display: inline-flex; align-items: center; gap: 6px; background: #f0f9ff; color: #1989fa; border: 1px solid #e6f7ff; padding: 8px 12px; border-radius: 999px; box-shadow: 0 2px 8px rgba(24, 144, 255, 0.12); animation: bubble-pop 0.6s ease-out, pulse 1.6s infinite; font-size: 12px; }
+.guide-hand { width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff 0%, #e6f7ff 60%, #cbe8ff 100%); box-shadow: 0 2px 6px rgba(24, 144, 255, 0.2); animation: swipe-left 1.8s infinite; }
+@keyframes swipe-left { 0% { transform: translateX(0); opacity: 0.85; } 50% { transform: translateX(-18px); opacity: 1; } 100% { transform: translateX(0); opacity: 0.85; } }
 
 // 动画定义
 @keyframes pulse {

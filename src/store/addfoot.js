@@ -170,7 +170,7 @@ export const useAddFootStore = defineStore('addfoot', () => {
 
   // 选择器数据
   const categoryColumns = ref([
-    { text: '蔬菜', value: '蔬菜' },
+    { text: '蔬菜', value: '蔬菜类' },
     { text: '水果', value: '水果' },
     { text: '肉类', value: '肉类' },
     { text: '海鲜', value: '海鲜' },
