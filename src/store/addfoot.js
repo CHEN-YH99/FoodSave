@@ -53,13 +53,20 @@ export const useAddFootStore = defineStore('addfoot', () => {
       // 模拟网络延迟，让用户能看到加载动画（最少显示800ms）
       const startTime = Date.now();
       
-      // 发送POST请求到后端API
-      const response = await axios.post(`${API_BASE_URL}/food`, foodData, {
-        timeout: 10000, // 10秒超时
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      let response
+      if (inputFormData._id) {
+        // 更新食材
+        response = await axios.put(`${API_BASE_URL}/food/${inputFormData._id}`, foodData, {
+          timeout: 10000,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      } else {
+        // 新增食材
+        response = await axios.post(`${API_BASE_URL}/food`, foodData, {
+          timeout: 10000,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
       
       const result = response.data;
       
@@ -69,17 +76,19 @@ export const useAddFootStore = defineStore('addfoot', () => {
         await new Promise(resolve => setTimeout(resolve, 800 - elapsedTime));
       }
       
-      // 保存成功后，将食材名称添加到最近使用列表
-      if (!recentFoods.value.includes(inputFormData.name.trim())) {
-        recentFoods.value.unshift(inputFormData.name.trim());
-        // 限制最近使用列表的长度
-        if (recentFoods.value.length > 10) {
-          recentFoods.value = recentFoods.value.slice(0, 10);
+      // 保存成功后，将食材名称添加到最近使用列表（仅新增时）
+      if (!inputFormData._id) {
+        if (!recentFoods.value.includes(inputFormData.name.trim())) {
+          recentFoods.value.unshift(inputFormData.name.trim());
+          if (recentFoods.value.length > 10) {
+            recentFoods.value = recentFoods.value.slice(0, 10);
+          }
         }
       }
       
-      // 重置store中的表单数据
+      // 重置表单数据（保持编辑模式下的 _id 清空）
       Object.assign(formData.value, {
+        _id: undefined,
         name: '',
         category: '',
         purchaseDate: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/'),
@@ -92,7 +101,7 @@ export const useAddFootStore = defineStore('addfoot', () => {
       // 触发全局事件，通知其他页面数据已更新
       window.dispatchEvent(new CustomEvent('foodDataUpdated', { 
         detail: { 
-          action: 'add', 
+          action: inputFormData._id ? 'update' : 'add', 
           food: result 
         } 
       }));
@@ -134,6 +143,7 @@ export const useAddFootStore = defineStore('addfoot', () => {
 
   // 表单数据
   const formData = ref({
+    _id: undefined,
     name: '',
     category: '',
     purchaseDate: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/'),

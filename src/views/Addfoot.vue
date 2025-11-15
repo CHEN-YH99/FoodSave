@@ -1,9 +1,9 @@
 <template>
   <div class="add-food-page">
     <!-- 导航栏 -->
-    <van-nav-bar title="添加食材" left-arrow @click-left="() => router.back()" fixed placeholder>
+  <van-nav-bar :title="pageTitle" left-arrow @click-left="() => router.back()" fixed placeholder>
       <template #right>
-        <van-button :loading="store.isloading" text="保存" color="rgba(0,150,5,0.5)" size="small" round @click="onSave"
+        <van-button :loading="store.isloading" :text="store.formData._id ? '更新' : '保存'" color="rgba(0,150,5,0.5)" size="small" round @click="onSave"
           :disabled="!store.isFormValid || store.isloading">
         </van-button>
       </template>
@@ -138,9 +138,12 @@
 import { useAddFootStore } from '../store/addfoot.js'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
+import { computed, onMounted } from 'vue'
+import axios from 'axios'
 
 const router = useRouter()
 const store = useAddFootStore()
+const pageTitle = computed(() => store.formData._id ? '编辑食材' : '添加食材')
 
 // 保存表单
 const onSave = async () => {
@@ -195,6 +198,24 @@ const onSave = async () => {
     })
   }
 }
+
+onMounted(async () => {
+  const editId = router.currentRoute.value.query?.editId
+  if (!editId) return
+  try {
+    const { data } = await axios.get(`http://localhost:3001/api/food/${editId}`)
+    store.formData._id = data._id
+    store.formData.name = data.name || ''
+    store.formData.category = data.category || ''
+    store.formData.purchaseDate = data.purchaseDate || new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/')
+    store.formData.shelfLife = data.shelfLife || ''
+    store.formData.storageLocation = data.storageLocation || ''
+    store.formData.quantity = typeof data.quantity === 'number' ? data.quantity : 1
+    store.formData.unit = data.unit || '千克'
+  } catch (e) {
+    showToast('加载食材信息失败')
+  }
+})
 
 </script>
 

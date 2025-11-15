@@ -165,6 +165,8 @@
         </div>
       </div>
 
+      <van-action-sheet v-model:show="showMoreActions" :actions="moreActions" cancel-text="取消" @select="onMoreSelect" />
+
       <!-- 食品详情内容 -->
       <div class="food-detail-content">
         <!-- 加载状态 -->
@@ -211,6 +213,12 @@
           </div>
         </template>
       </div>
+
+      <van-overlay :show="isRefreshing" :lock-scroll="true" :z-index="3000" class="refresh-overlay">
+        <div class="refresh-content">
+          <van-loading size="24px" vertical>刷新中...</van-loading>
+        </div>
+      </van-overlay>
     </div>
   </div>
 </template>
@@ -336,7 +344,24 @@ const handleSearch = () => {
 
 // 更多操作
 const handleMore = () => {
-  showToast('更多操作功能开发中')
+  showMoreActions.value = true
+}
+
+const showMoreActions = ref(false)
+const moreActions = ref([
+  { name: '编辑', key: 'edit' },
+  { name: '取出', key: 'take' }
+])
+
+const onMoreSelect = async (action) => {
+  if (action?.key === 'edit') {
+    const id = foodDetail.value.id || foodDetail.value._id
+    if (!id) return showToast('无法获取食材ID')
+    router.push({ path: '/addfoot', query: { editId: id } })
+  } else if (action?.key === 'take') {
+    await handleTakeOut(foodDetail.value, { refresh: true, goHome: true })
+  }
+  showMoreActions.value = false
 }
 
 // 点击食品项（在分类模式下）
@@ -351,7 +376,8 @@ const handleFoodClick = (food) => {
 }
 
 // 取出食材处理函数
-const handleTakeOut = async (food) => {
+const isRefreshing = ref(false)
+const handleTakeOut = async (food, options = {}) => {
   const foodId = food._id || food.id
 
   // 防止重复点击
@@ -372,14 +398,21 @@ const handleTakeOut = async (food) => {
     showGestureHint.value = false
     takingOutIds.value.add(foodId)
 
-    // 执行取出操作
     await store.takeOutFood(food)
-
-    // 显示成功提示
-    showToast({
-      message: '取出成功',
-      type: 'success'
-    })
+    if (options?.refresh) {
+      isRefreshing.value = true
+      try {
+        await store.loadFoodData()
+      } catch (e) {
+        showToast('刷新失败，请稍后重试')
+        isRefreshing.value = false
+        return
+      }
+      isRefreshing.value = false
+    }
+    if (options?.goHome) {
+      router.push({ name: 'Index' })
+    }
 
   } catch (error) {
     // 用户取消或操作失败
@@ -1227,5 +1260,19 @@ onUnmounted(() => {
 // 高亮闪烁类
 .highlight-flash {
   animation: highlight-flash 2s ease-in-out !important;
+}
+</style>
+
+<style scoped lang="scss">
+.refresh-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.refresh-content {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
 </style>

@@ -60,6 +60,9 @@ onMounted(async () => {
 // AI 悬浮聊天：可拖动的入口 + 弹窗消息流
 const aiVisible = ref(false)
 const aiDragging = ref(false)
+const ballSize = 48
+const edgeThreshold = 24
+const aiEdge = ref(null)
 const aiPos = ref({ x: window.innerWidth - 70, y: window.innerHeight - 140 })
 const aiStart = ref({ x: 0, y: 0 })
 const aiPointerId = ref(null)
@@ -68,32 +71,103 @@ const aiMessages = ref([
 ])
 const aiInput = ref('')
 
-const openAi = () => { aiVisible.value = true }
+const openAi = () => { if (aiDragging.value) return; aiVisible.value = true }
 const closeAi = () => { aiVisible.value = false }
 
 // 拖动逻辑：Pointer 事件，限定在视窗范围
 const onAiPointerDown = (e) => {
+  if (e.pointerType === 'mouse') return
   aiDragging.value = true
   aiPointerId.value = e.pointerId
   aiStart.value = { x: e.clientX - aiPos.value.x, y: e.clientY - aiPos.value.y }
-  e.target.setPointerCapture?.(e.pointerId)
+  window.addEventListener('pointermove', onAiPointerMove)
+  window.addEventListener('pointerup', onAiPointerUp)
 }
 const onAiPointerMove = (e) => {
   if (!aiDragging.value) return
   let nx = e.clientX - aiStart.value.x
   let ny = e.clientY - aiStart.value.y
-  const margin = 30
-  const maxX = window.innerWidth - margin
-  const maxY = window.innerHeight - margin
-  if (nx < margin) nx = margin
-  if (ny < margin) ny = margin
+  const minX = -ballSize * 0.5
+  const maxX = window.innerWidth - ballSize * 0.5
+  const minY = 30
+  const maxY = window.innerHeight - 30
+  if (nx < minX) nx = minX
   if (nx > maxX) nx = maxX
+  if (ny < minY) ny = minY
   if (ny > maxY) ny = maxY
   aiPos.value = { x: nx, y: ny }
+  if (nx <= edgeThreshold) {
+    aiEdge.value = 'left'
+  } else if (nx >= window.innerWidth - ballSize - edgeThreshold) {
+    aiEdge.value = 'right'
+  } else {
+    aiEdge.value = null
+  }
 }
 const onAiPointerUp = () => {
   aiDragging.value = false
   aiPointerId.value = null
+  window.removeEventListener('pointermove', onAiPointerMove)
+  window.removeEventListener('pointerup', onAiPointerUp)
+  snapToEdge()
+}
+
+const onAiMouseDown = (e) => {
+  if (e.button !== 0) return
+  aiDragging.value = true
+  aiStart.value = { x: e.clientX - aiPos.value.x, y: e.clientY - aiPos.value.y }
+  window.addEventListener('mousemove', onAiMouseMove)
+  window.addEventListener('mouseup', onAiMouseUp)
+  e.preventDefault()
+}
+
+const onAiMouseMove = (e) => {
+  if (!aiDragging.value) return
+  if (!(e.buttons & 1)) return
+  let nx = e.clientX - aiStart.value.x
+  let ny = e.clientY - aiStart.value.y
+  const minX = -ballSize * 0.5
+  const maxX = window.innerWidth - ballSize * 0.5
+  const minY = 30
+  const maxY = window.innerHeight - 30
+  if (nx < minX) nx = minX
+  if (nx > maxX) nx = maxX
+  if (ny < minY) ny = minY
+  if (ny > maxY) ny = maxY
+  aiPos.value = { x: nx, y: ny }
+  if (nx <= edgeThreshold) {
+    aiEdge.value = 'left'
+  } else if (nx >= window.innerWidth - ballSize - edgeThreshold) {
+    aiEdge.value = 'right'
+  } else {
+    aiEdge.value = null
+  }
+}
+
+const onAiMouseUp = () => {
+  aiDragging.value = false
+  window.removeEventListener('mousemove', onAiMouseMove)
+  window.removeEventListener('mouseup', onAiMouseUp)
+  snapToEdge()
+}
+
+const snapToEdge = () => {
+  const minY = 30
+  const maxY = window.innerHeight - 30
+  let x = aiPos.value.x
+  let y = aiPos.value.y
+  if (aiEdge.value === 'left') {
+    x = -ballSize * 0.5
+  } else if (aiEdge.value === 'right') {
+    x = window.innerWidth - ballSize * 0.5
+  } else {
+    const margin = 30
+    if (x < margin) x = margin
+    if (x > window.innerWidth - margin - ballSize) x = window.innerWidth - margin - ballSize
+  }
+  if (y < minY) y = minY
+  if (y > maxY) y = maxY
+  aiPos.value = { x, y }
 }
 
 const sending = ref(false)
@@ -157,7 +231,7 @@ const sendAi = async () => {
       <router-view />
     </div>
     <TabBar v-if="shouldShowTabBar" />
-    <div class="ai-fab" :style="{ left: aiPos.x + 'px', top: aiPos.y + 'px' }" @click="openAi" @pointerdown="onAiPointerDown" @pointermove="onAiPointerMove" @pointerup="onAiPointerUp">
+    <div class="ai-fab" :style="{ left: aiPos.x + 'px', top: aiPos.y + 'px' }" @click="openAi" @pointerdown="onAiPointerDown" @mousedown="onAiMouseDown">
       <van-icon name="chat" color="#fff" size="20" />
     </div>
     <van-popup v-model:show="aiVisible" position="bottom" :style="{ height: '60%' }" round>
@@ -264,6 +338,7 @@ const sendAi = async () => {
   z-index: 2000;
   cursor: pointer;
   user-select: none;
+  transition: left 0.2s ease, top 0.2s ease, transform 0.2s ease;
 }
 
 .ai-chat {
