@@ -205,3 +205,10 @@ export const analyticsApi = {
 }
 
 export default apiClient
+
+export const aiApi = {
+  async chat(payload) {
+    const res = await apiClient.post('/ai/chat', payload)
+    return res.data
+  }
+}

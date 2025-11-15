@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import foodRoutes from './routes/food.js';
 import authRoutes from './routes/auth.js';
+import aiRoutes from './routes/ai.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -12,7 +13,6 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB连接
-// 定义一个异步函数，用于连接数据库
 // 定义一个异步函数，用于连接数据库
 const connectDB = async () => {
   try {
@@ -29,6 +29,7 @@ const connectDB = async () => {
 app.use('/api/food', foodRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', authRoutes); // 添加用户相关路由
+app.use('/api/ai', aiRoutes);
 
 // 启动服务器
 // 定义一个异步函数startServer，用于启动服务器

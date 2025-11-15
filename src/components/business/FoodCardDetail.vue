@@ -51,6 +51,7 @@
           </span>
         </div>
 
+        <!-- 操作指引遮罩：进入分类详情后，展示一次“向左滑动可取出”的引导 -->
         <van-overlay :show="filteredFoods.length > 0 && showGestureHint" :lock-scroll="true" :z-index="2000" class="guide-overlay" @click="showGestureHint=false">
           <div class="guide-content">
             <div class="guide-tooltip">
@@ -241,6 +242,7 @@ const sortOptions = [
 const pageSize = ref(10) // 每页显示数量
 const currentPage = ref(1) // 当前页码
 const showAllFoods = ref(false) // 是否显示所有食品
+// 操作指引状态：一次性展示，交互或超时后隐藏
 const showGestureHint = ref(false)
 let gestureHintTimer = null
 
@@ -592,6 +594,7 @@ onMounted(async () => {
   await initData()
 
   // 分类模式进入且有数据时，显示一次性遮罩引导
+  // 分类模式且有数据：显示一次遮罩指引，6 秒后自动隐藏
   if (isCategoryMode.value && filteredFoods.value.length > 0) {
     showGestureHint.value = true
     gestureHintTimer = setTimeout(() => { showGestureHint.value = false }, 6000)
@@ -604,6 +607,7 @@ onMounted(async () => {
   }
 })
 onUnmounted(() => {
+  // 页面卸载清理：避免残留定时器导致内存泄漏
   if (gestureHintTimer) {
     clearTimeout(gestureHintTimer)
     gestureHintTimer = null

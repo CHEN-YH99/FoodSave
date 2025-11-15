@@ -80,6 +80,62 @@ src/
   - 食材：`GET /api/food`、`GET /api/food/search?q=...`、`GET /api/food/suggestions?q=...`、`POST /api/food`、`PUT /api/food/:id`、`DELETE /api/food/:id`
   - 用户：`POST /api/auth/login`、`POST /api/register`、`GET /api/users/:userId`、`PUT /api/users/:userId`
 
+## AI 智能助手（DeepSeek）
+
+- 入口与交互：
+  - 页面右下角可拖动图标，点击弹出聊天框（`src/App.vue:155`）
+  - 支持基于当前食材库的智能问答与菜谱生成，按卡片结构展示（`src/App.vue:165`）
+- 服务端接口：
+  - `POST /api/ai/chat`
+  - 请求体：
+    ```json
+    {
+      "question": "帮我用青椒做一道菜",
+      "context": {
+        "foods": [ { "name": "青椒", "category": "蔬菜类", "expireDate": "2025-11-18" } ],
+        "history": [ { "role": "user", "content": "口味清淡" } ]
+      }
+    }
+    ```
+  - 返回体（优先严格 JSON）：
+    ```json
+    {
+      "success": true,
+      "reply": {
+        "recipes": [
+          {
+            "name": "清炒青椒土豆片",
+            "ingredients": [ { "name": "青椒", "amount": 2, "unit": "个" }, { "name": "土豆", "amount": 1, "unit": "个" } ],
+            "steps": [ "切片", "热锅少油快炒", "加盐出锅" ],
+            "timeMinutes": 15,
+            "storageAdvice": "现做现吃，剩菜冷藏不超过24小时"
+          }
+        ],
+        "usedFoods": ["青椒", "土豆"],
+        "notes": "优先使用即将过期食材"
+      }
+    }
+    ```
+- 环境变量（Windows）：
+  - 永久：
+    - `setx DEEPSEEK_API_KEY "<你的密钥>"`
+    - `setx DEEPSEEK_MODEL "deepseek-chat"`
+    - `setx AI_TIMEOUT_MS 15000`
+  - 临时（当前终端）：
+    - PowerShell：`$env:DEEPSEEK_API_KEY = "<你的密钥>"`
+- 安全说明：密钥仅通过环境变量注入，后端代理调用，不在前端暴露（`server/services/aiClient.js:8`）。
+- 相关代码：
+  - 客户端调用：`src/services/api.js:210`
+  - 前端渲染：`src/App.vue:165`
+  - 路由处理：`server/routes/ai.js:10`
+  - DeepSeek 接入：`server/services/aiClient.js:8`
+
+## 使用指引与提示
+
+- 操作指引遮罩：进入分类详情后一次性显示“向左滑动条目可取出”（点击遮罩关闭，数秒后自动隐藏），见 `src/components/business/FoodCardDetail.vue:54`。
+- 健康检查：访问 `GET /api/health/db` 查看数据库连接与文档计数（`server/app.js:28`）。
+- 依赖检查：若后端提示缺少 `axios`，在项目根执行 `pnpm add axios`。
+
 ## 核心功能
 
 ### 1. 食材管理
@@ -162,6 +218,11 @@ start-server.bat
 pnpm run server
 # 或
 node server/app.js
+
+# 配置 DeepSeek（Windows）
+# 设置密钥后重启终端，再启动后端
+setx DEEPSEEK_API_KEY "<你的密钥>"
+setx DEEPSEEK_MODEL "deepseek-chat"
 ```
 
 ```bash
