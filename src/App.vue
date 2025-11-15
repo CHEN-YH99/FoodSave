@@ -6,6 +6,8 @@ import { useAuthStore } from '@/store/auth';
 import { aiApi } from '@/services/api'
 import Head from './components/common/Head.vue'
 import TabBar from './components/common/TabBar.vue'
+import { storageUtils } from '@/utils'
+import { STORAGE_KEYS } from '@/constants'
 
 const route = useRoute();
 const store = useIndexStore();
@@ -55,6 +57,13 @@ onMounted(async () => {
   setTimeout(() => {
     skipPoster();
   }, 5000);
+
+  const saved = storageUtils.getItem(STORAGE_KEYS.USER_PREFERENCES, {})?.theme || 'light'
+  applyTheme(saved)
+  window.addEventListener('request-theme-change', (e) => {
+    const mode = typeof e.detail === 'string' ? e.detail : (e.detail?.mode || 'light')
+    setTheme(mode)
+  })
 });
 
 // AI 悬浮聊天：可拖动的入口 + 弹窗消息流
@@ -215,6 +224,24 @@ const sendAi = async () => {
     sending.value = false
   }
 }
+
+// 全局主题：应用与炫酷切换动画
+const themeSwitching = ref(false)
+const applyTheme = (mode) => {
+  const body = document.body
+  body.classList.remove('theme-dark', 'theme-light')
+  body.classList.add(mode === 'dark' ? 'theme-dark' : 'theme-light')
+}
+const setTheme = (mode) => {
+  const prefs = storageUtils.getItem(STORAGE_KEYS.USER_PREFERENCES, {}) || {}
+  prefs.theme = mode
+  storageUtils.setItem(STORAGE_KEYS.USER_PREFERENCES, prefs)
+  themeSwitching.value = true
+  requestAnimationFrame(() => {
+    applyTheme(mode)
+    setTimeout(() => { themeSwitching.value = false }, 500)
+  })
+}
 </script>
 
 <template>
@@ -271,6 +298,7 @@ const sendAi = async () => {
         </div>
       </div>
     </van-popup>
+    <div v-if="themeSwitching" class="theme-switch-overlay"><div class="ring"></div></div>
   </div>
 </template>
 
@@ -351,14 +379,14 @@ const sendAi = async () => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
 .ai-header .title { font-weight: 600; }
 .ai-body {
   flex: 1;
   overflow-y: auto;
   padding: 12px 16px;
-  background: #fafafa;
+  background: var(--bg);
 }
 .msg { display: flex; margin: 8px 0; }
 .msg.user { justify-content: flex-end; }
@@ -371,12 +399,12 @@ const sendAi = async () => {
   box-shadow: 0 2px 10px rgba(0,0,0,0.06);
 }
 .msg.user .bubble { background: #e6f7ff; color: #1d39c4; }
-.msg.assistant .bubble { background: #fff; color: #333; }
-.structured { max-width: 92%; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); padding: 12px; }
-.s-notes { font-size: 13px; color: #666; margin-bottom: 8px; }
-.s-card { border: 1px solid #f0f0f0; border-radius: 10px; padding: 10px; margin: 10px 0; background: #fcfcfc; }
+.msg.assistant .bubble { background: var(--card-bg); color: var(--text); }
+.structured { max-width: 92%; background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); padding: 12px; }
+.s-notes { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.s-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin: 10px 0; background: var(--card-bg); }
 .s-title { font-weight: 600; font-size: 15px; }
-.s-meta { font-size: 12px; color: #999; margin: 4px 0 8px; }
+.s-meta { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
 .s-subtitle { font-weight: 600; margin-top: 6px; }
 .s-list { margin: 6px 0 8px 16px; }
 .s-steps { margin: 6px 0 8px 16px; }
@@ -385,6 +413,31 @@ const sendAi = async () => {
   display: flex;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border);
+}
+
+.theme-switch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+.theme-switch-overlay .ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20vmin;
+  height: 20vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 60%);
+  mix-blend-mode: difference;
+  transform: translate(-50%, -50%) scale(0);
+  animation: theme-burst 500ms ease-out forwards;
+}
+@keyframes theme-burst {
+  to {
+    transform: translate(-50%, -50%) scale(20);
+    opacity: 0;
+  }
 }
 </style>

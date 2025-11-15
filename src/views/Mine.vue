@@ -180,10 +180,22 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router' //这里使用局部导入，方便维护
 import { useAuthStore } from '@/store/auth'
 import { showToast, showConfirmDialog, showNotify } from 'vant'
+import { storageUtils } from '@/utils'
+import { STORAGE_KEYS } from '@/constants'
 
 // 路由实例
 const router = useRouter()
 const authStore = useAuthStore()
+
+const themeMode = ref(storageUtils.getItem(STORAGE_KEYS.USER_PREFERENCES, {})?.theme || 'light')
+
+const setTheme = (mode) => {
+  themeMode.value = mode
+  const prefs = storageUtils.getItem(STORAGE_KEYS.USER_PREFERENCES, {}) || {}
+  prefs.theme = mode
+  storageUtils.setItem(STORAGE_KEYS.USER_PREFERENCES, prefs)
+  window.dispatchEvent(new CustomEvent('request-theme-change', { detail: mode }))
+}
 
 // 用户统计数据
 const userStats = ref({
@@ -348,16 +360,16 @@ const openSettings = (settingType) => {
   }
 
   if (settingType === 'theme') {
-    // 主题切换逻辑
     showConfirmDialog({
       title: '选择主题',
       message: '请选择您喜欢的主题模式',
       confirmButtonText: '深色模式',
       cancelButtonText: '浅色模式'
     }).then(() => {
+      setTheme('dark')
       showToast('已切换到深色模式')
-      // 这里可以添加实际的主题切换逻辑
     }).catch(() => {
+      setTheme('light')
       showToast('已切换到浅色模式')
     })
   } else {
@@ -424,13 +436,14 @@ onMounted(async () => {
       console.log('获取用户信息失败:', error)
     }
   }
+  window.dispatchEvent(new CustomEvent('request-theme-change', { detail: themeMode.value }))
 })
 </script>
 
 <style scoped lang="scss">
 .mine-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: var(--bg);
   padding-bottom: 80px;
 
   // 顶部用户信息区域
@@ -530,7 +543,7 @@ onMounted(async () => {
     }
 
     .device-list {
-      background: white;
+      background: var(--card-bg);
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -566,7 +579,7 @@ onMounted(async () => {
 
             .van-icon {
               font-size: 20px;
-              color: white;
+              color: var(--text);
             }
 
             &.fridge {
@@ -586,13 +599,13 @@ onMounted(async () => {
             h4 {
               font-size: 16px;
               font-weight: 600;
-              color: #323233;
+              color: var(--text);
               margin: 0 0 4px 0;
             }
 
             p {
               font-size: 12px;
-              color: #969799;
+              color: var(--muted);
               margin: 0;
             }
           }
@@ -647,7 +660,7 @@ onMounted(async () => {
       .member-item {
         flex-shrink: 0;
         text-align: center;
-        background: white;
+        background: var(--card-bg);
         border-radius: 16px;
         padding: 16px 12px;
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -661,13 +674,13 @@ onMounted(async () => {
           display: block;
           font-size: 14px;
           font-weight: 500;
-          color: #323233;
+          color: var(--text);
           margin-bottom: 4px;
         }
 
         .member-role {
           font-size: 12px;
-          color: #969799;
+          color: var(--muted);
         }
       }
     }
@@ -679,7 +692,7 @@ onMounted(async () => {
     margin-bottom: 24px;
 
     .settings-grid {
-      background: white;
+      background: var(--card-bg);
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -710,7 +723,7 @@ onMounted(async () => {
 
           .van-icon {
             font-size: 18px;
-            color: white;
+            color: var(--text);
           }
 
           &.notification {
@@ -737,7 +750,7 @@ onMounted(async () => {
         span {
           flex: 1;
           font-size: 16px;
-          color: #323233;
+          color: var(--text);
         }
 
         .arrow-icon {
@@ -758,7 +771,7 @@ onMounted(async () => {
       gap: 12px;
 
       .support-item {
-        background: white;
+        background: var(--card-bg);
         border-radius: 12px;
         padding: 16px 8px;
         text-align: center;
@@ -780,14 +793,14 @@ onMounted(async () => {
 
         .van-icon {
           font-size: 20px;
-          color: #646566;
+          color: var(--muted);
           margin-bottom: 8px;
         }
 
         span {
           display: block;
           font-size: 12px;
-          color: #646566;
+          color: var(--muted);
         }
       }
     }
@@ -797,5 +810,39 @@ onMounted(async () => {
   @media (max-width: 375px) {
     // 响应式样式保留
   }
+}
+</style>
+
+<style lang="scss">
+.theme-dark .mine-container {
+  background: linear-gradient(135deg, #0f1115 0%, #1a1d24 100%);
+}
+.theme-dark .device-list,
+.theme-dark .member-item,
+.theme-dark .settings-grid,
+.theme-dark .support-item {
+  background: #1a1d24;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+.theme-dark .section-title h3,
+.theme-dark .device-details h4,
+.theme-dark .member-name,
+.theme-dark .settings-grid .setting-item span,
+.theme-dark .support-item span {
+  color: #e6e6e6;
+}
+.theme-dark .device-details p,
+.theme-dark .device-count,
+.theme-dark .member-role,
+.theme-dark .settings-grid .setting-item .arrow-icon,
+.theme-dark .support-item .van-icon {
+  color: #a0a0a0;
+}
+.theme-dark .settings-grid .setting-item:not(:last-child) {
+  border-bottom-color: #2a2f3a;
+}
+.theme-dark .settings-grid .setting-item:active,
+.theme-dark .device-item:active {
+  background-color: #15181e;
 }
 </style>

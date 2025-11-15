@@ -13,6 +13,7 @@
         size="mini" 
         type="primary" 
         plain
+        color="rgb(0, 150, 5)"
         @click="refreshRecommendations"
         :loading="loading"
         class="refresh-btn"
