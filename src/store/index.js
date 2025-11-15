@@ -4,7 +4,7 @@ import { showToast, showDialog } from 'vant'
 import axios from 'axios'
 
 // 导入企业级模块
-import { STORAGE_KEYS, EXPIRY_THRESHOLDS, DEFAULT_CONFIG, CATEGORY_MAPPING } from '@/constants'
+import { STORAGE_KEYS, EXPIRY_THRESHOLDS, DEFAULT_CONFIG, CATEGORY_MAPPING, ROUTE_NAMES } from '@/constants'
 import { foodService } from '@/services/api'
 import { dateUtils, storageUtils, foodUtils } from '@/utils'
 
@@ -919,12 +919,11 @@ export const useIndexStore = defineStore('index', () => {
   }
 
   // 根据ID从数据库获取单个食品的详细信息
+  // 获取单个食品详情（统一走 service，并使用轻量缓存）
   const getFoodById = async (foodId) => {
     try {
-      const response = await axios.get(`http://localhost:3001/api/food/${foodId}`)
-
-      if (response.data) {
-        const food = response.data
+      const food = await foodService.getFoodById(foodId)
+      if (food) {
 
         // 返回格式化的食品数据
         const formattedData = {
@@ -1015,6 +1014,7 @@ export const useIndexStore = defineStore('index', () => {
   }
 
   // 最近添加项点击处理
+  // 最近添加项点击处理（统一路由常量，避免硬编码）
   const handleRecentItemClick = (item, router) => {
     // 如果食材已被取出，显示提示信息
     if (item.isTakenOut) {
@@ -1039,7 +1039,7 @@ export const useIndexStore = defineStore('index', () => {
 
     // 跳转到食品详情页面，只传递ID参数
     router.push({
-      name: 'FoodDetail',
+      name: ROUTE_NAMES.FOOD_DETAIL,
       params: { id: item.id }
     })
   }

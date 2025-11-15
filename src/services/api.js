@@ -91,8 +91,18 @@ export const foodService = {
    * 获取所有食材
    */
   async getAllFoods() {
+    const now = Date.now()
+    const cached = __cache.foods
+    // 命中缓存且未过期
+    if (cached.data && (now - cached.ts) < CACHE_TTL) {
+      return cached.data
+    }
+
     const response = await apiClient.get('/food')
-    return response.data
+    const data = response.data
+    // 写入缓存
+    __cache.foods = { data, ts: now }
+    return data
   },
 
   /**
@@ -100,8 +110,18 @@ export const foodService = {
    * @param {string} id - 食材ID
    */
   async getFoodById(id) {
+    const now = Date.now()
+    const cached = __cache.byId.get(id)
+    // 命中缓存且未过期
+    if (cached && (now - cached.ts) < CACHE_TTL) {
+      return cached.data
+    }
+
     const response = await apiClient.get(`/food/${id}`)
-    return response.data
+    const data = response.data
+    // 写入缓存
+    __cache.byId.set(id, { data, ts: now })
+    return data
   },
 
   /**
@@ -212,3 +232,10 @@ export const aiApi = {
     return res.data
   }
 }
+// 轻量内存缓存，用于减少重复API请求，提升前端响应速度
+// 注意：仅缓存读取结果，不更改服务端数据；TTL过期后自动失效
+const __cache = {
+  foods: { data: null, ts: 0 }, // 缓存所有食材列表
+  byId: new Map()               // 缓存单个食材详情：key => { data, ts }
+}
+const CACHE_TTL = 30_000 // 缓存有效期：30秒

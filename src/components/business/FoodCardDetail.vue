@@ -228,6 +228,7 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIndexStore } from '@/store/index'
 import { showToast, showConfirmDialog } from 'vant'
+import { ROUTE_NAMES } from '@/constants'
 
 const route = useRoute()
 const router = useRouter()
@@ -357,7 +358,7 @@ const onMoreSelect = async (action) => {
   if (action?.key === 'edit') {
     const id = foodDetail.value.id || foodDetail.value._id
     if (!id) return showToast('无法获取食材ID')
-    router.push({ path: '/addfoot', query: { editId: id } })
+    router.push({ name: ROUTE_NAMES.ADDFOOT, query: { editId: id } })
   } else if (action?.key === 'take') {
     await handleTakeOut(foodDetail.value, { refresh: true, goHome: true })
   }
@@ -370,7 +371,7 @@ const handleFoodClick = (food) => {
   // 直接跳转到食品详情页，只传递ID参数
   // 不再使用缓存，而是在详情页实时获取最新数据
   router.push({
-    name: 'FoodDetail',
+    name: ROUTE_NAMES.FOOD_DETAIL,
     params: { id: food.id }
   })
 }
@@ -401,17 +402,11 @@ const handleTakeOut = async (food, options = {}) => {
     await store.takeOutFood(food)
     if (options?.refresh) {
       isRefreshing.value = true
-      try {
-        await store.loadFoodData()
-      } catch (e) {
-        showToast('刷新失败，请稍后重试')
-        isRefreshing.value = false
-        return
-      }
+      await new Promise((resolve) => setTimeout(resolve, 250))
       isRefreshing.value = false
     }
     if (options?.goHome) {
-      router.push({ name: 'Index' })
+      router.push({ name: ROUTE_NAMES.INDEX })
     }
 
   } catch (error) {

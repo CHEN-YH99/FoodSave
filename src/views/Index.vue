@@ -250,12 +250,12 @@ const formatToSecond = (value) => {
 
 // 页面挂载时加载数据
 onMounted(async () => {
-  loadFoodData()
+  if (store.foodData.length === 0) {
+    await loadFoodData()
+  }
   
-  // 检查登录状态
   checkLoginStatus()
 
-  // 监听搜索结果选择事件
   window.addEventListener('searchResultSelected', handleSearchResultSelected)
 })
 
