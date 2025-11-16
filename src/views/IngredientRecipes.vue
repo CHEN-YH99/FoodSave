@@ -248,10 +248,10 @@ onMounted(() => {
 <style scoped lang="scss">
 .ingredient-recipes {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg);
   
   .custom-nav-bar {
-    background: white;
+    background: var(--card-bg);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
@@ -262,7 +262,7 @@ onMounted(() => {
 
 // 食材信息头部
 .ingredient-header {
-  background: white;
+  background: var(--card-bg);
   margin: 16px;
   border-radius: 12px;
   padding: 16px;
@@ -282,7 +282,7 @@ onMounted(() => {
     .ingredient-name {
       font-size: 18px;
       font-weight: 700;
-      color: #323233;
+      color: var(--text);
       margin-bottom: 4px;
     }
     
@@ -294,7 +294,7 @@ onMounted(() => {
     
     .recipes-count {
       font-size: 12px;
-      color: #969799;
+      color: var(--muted);
     }
   }
 }
@@ -318,7 +318,7 @@ onMounted(() => {
   gap: 12px;
   
   .recipe-item {
-    background: white;
+    background: var(--card-bg);
     border-radius: 12px;
     padding: 16px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -349,7 +349,7 @@ onMounted(() => {
       .recipe-name {
         font-size: 16px;
         font-weight: 600;
-        color: #323233;
+        color: var(--text);
         margin-bottom: 4px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -358,7 +358,7 @@ onMounted(() => {
       
       .recipe-description {
         font-size: 13px;
-        color: #646566;
+        color: var(--muted);
         margin-bottom: 8px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -376,7 +376,7 @@ onMounted(() => {
           align-items: center;
           gap: 4px;
           font-size: 12px;
-          color: #969799;
+          color: var(--muted);
         }
       }
       
@@ -398,7 +398,7 @@ onMounted(() => {
   
   p {
     margin: 16px 0;
-    color: #646566;
+    color: var(--muted);
     font-size: 14px;
   }
 }

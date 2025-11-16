@@ -435,10 +435,10 @@ onMounted(() => {
 <style scoped lang="scss">
 .recipe-detail {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: var(--bg);
   
   .custom-nav-bar {
-    background: white;
+    background: var(--card-bg);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     
     .favorite-icon {
@@ -496,7 +496,7 @@ onMounted(() => {
 
 // 推荐原因
 .recommend-reason {
-  background: white;
+  background: var(--card-bg);
   margin: 16px;
   border-radius: 12px;
   padding: 16px;
@@ -509,7 +509,7 @@ onMounted(() => {
     margin-bottom: 12px;
     font-size: 16px;
     font-weight: 600;
-    color: #323233;
+    color: var(--text);
   }
   
   .reason-content {
@@ -522,16 +522,16 @@ onMounted(() => {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     
-    .reason-text {
+  .reason-text {
       display: flex;
       flex-direction: column;
       gap: 4px;
       
-      .ingredient-name {
-        font-size: 16px;
-        font-weight: 600;
-        color: #323233;
-      }
+    .ingredient-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+    }
       
       .expiry-info {
         font-size: 12px;
@@ -539,16 +539,16 @@ onMounted(() => {
       }
     }
     
-    .reason-desc {
-      font-size: 14px;
-      color: #646566;
-    }
+  .reason-desc {
+    font-size: 14px;
+    color: var(--muted);
   }
+}
 }
 
 // 菜谱基本信息
 .recipe-info {
-  background: white;
+  background: var(--card-bg);
   margin: 0 16px 16px;
   border-radius: 12px;
   padding: 16px;
@@ -565,18 +565,18 @@ onMounted(() => {
       align-items: center;
       gap: 8px;
       
-      .info-label {
-        font-size: 12px;
-        color: #969799;
-      }
+    .info-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
       
-      .info-value {
-        font-size: 16px;
-        font-weight: 600;
-        color: #323233;
-      }
+    .info-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
     }
   }
+}
 }
 
 // 通用区块样式
@@ -585,7 +585,7 @@ onMounted(() => {
 .tips-section,
 .nutrition-section,
 .other-recipes {
-  background: white;
+  background: var(--card-bg);
   margin: 0 16px 16px;
   border-radius: 12px;
   padding: 16px;
@@ -598,11 +598,11 @@ onMounted(() => {
     margin-bottom: 16px;
     font-size: 16px;
     font-weight: 600;
-    color: #323233;
+    color: var(--text);
     
     .per-serving {
       font-size: 12px;
-      color: #969799;
+      color: var(--muted);
       font-weight: 400;
     }
   }
@@ -626,10 +626,10 @@ onMounted(() => {
     align-items: center;
     gap: 6px;
     padding: 6px 10px;
-    background: #f7f8fa;
+    background: var(--card-bg);
     border-radius: 16px;
     font-size: 13px;
-    color: #323233;
+    color: var(--text);
     border: 1px solid transparent;
     transition: all 0.2s ease;
     
@@ -744,14 +744,14 @@ onMounted(() => {
         }
       }
       
-      .step-content {
-        text-align: center;
-        font-size: 12px;
-        line-height: 1.4;
-        color: #323233;
-        padding: 0 4px;
-        word-break: break-word;
-      }
+  .step-content {
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text);
+    padding: 0 4px;
+    word-break: break-word;
+  }
       
       .step-connector {
         position: absolute;
@@ -812,14 +812,14 @@ onMounted(() => {
   align-items: flex-start;
   gap: 8px;
   padding: 12px;
-  background: #f0f9ff;
+  background: var(--card-bg);
   border-radius: 8px;
   border-left: 4px solid #1989fa;
   
   span {
     font-size: 14px;
     line-height: 1.5;
-    color: #323233;
+    color: var(--text);
   }
 }
 
@@ -859,7 +859,7 @@ onMounted(() => {
     align-items: center;
     gap: 12px;
     padding: 12px;
-    background: #f7f8fa;
+    background: var(--card-bg);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -884,13 +884,13 @@ onMounted(() => {
       .other-recipe-name {
         font-size: 16px;
         font-weight: 600;
-        color: #323233;
+        color: var(--text);
         margin-bottom: 4px;
       }
       
       .other-recipe-time {
         font-size: 12px;
-        color: #969799;
+        color: var(--muted);
       }
     }
   }

@@ -4,7 +4,14 @@
     <div class="head">
       <van-search v-model="searchvalue" placeholder="搜索食材..." @input="handleInput" @search="search" @focus="handleFocus"
         @blur="handleBlur" class="search" />
-      <van-icon name="scan" color="rgb(0 150 5)" class="van-icon" @click="scancode" size="25" />
+      <div class="actions">
+        <van-icon name="scan" color="rgb(0 150 5)" class="van-icon" @click="scancode" size="25" />
+        <div class="theme-toggle" :data-mode="themeMode" @click="toggleTheme">
+          <span class="icon sun">🌞</span>
+          <span class="icon moon">🌙</span>
+          <span class="thumb" :style="{ transform: 'translateY(' + themeThumb + 'px)' }"></span>
+        </div>
+      </div>
     </div>
 
     <!-- 扫码弹窗 -->
@@ -105,6 +112,8 @@ import axios from 'axios';
 import Fuse from 'fuse.js';
 import { nanoid } from 'nanoid';
 import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import { storageUtils } from '@/utils'
+import { STORAGE_KEYS } from '@/constants'
 
 // 响应式变量
 const searchvalue = ref('');
@@ -127,6 +136,19 @@ let detectionCanvas = null; // 用于码检测的画布
 let detectionContext = null; // 画布上下文
 const scanResult = ref(''); // 扫描结果
 const codeDetected = ref(false); // 是否检测到码
+
+const themeMode = ref(storageUtils.getItem(STORAGE_KEYS.USER_PREFERENCES, {})?.theme || 'light')
+const setThemeMode = (mode) => {
+  themeMode.value = mode
+  window.dispatchEvent(new CustomEvent('request-theme-change', { detail: mode }))
+}
+const THUMB_TRAVEL = 20
+const themeThumb = ref(themeMode.value === 'dark' ? THUMB_TRAVEL : 0)
+const toggleTheme = () => {
+  const next = themeMode.value === 'dark' ? 'light' : 'dark'
+  setThemeMode(next)
+  themeThumb.value = next === 'dark' ? THUMB_TRAVEL : 0
+}
 
 // 防抖函数
 const debounce = (fn, delay = 300) => {
@@ -964,7 +986,7 @@ watch(searchvalue, (newVal) => {
   left: 0;
   right: 0;
   z-index: 1000;
-  background: rgb(255, 255, 255);
+  background: var(--bg);
   padding: 10px;
   display: flex;
   align-items: center;
@@ -977,23 +999,93 @@ watch(searchvalue, (newVal) => {
   flex: 1 0 85%;
   transition: all 0.2s ease-in-out;
   border-radius: 20px;
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--text);
+  background-color: var(--card-bg);
 }
 
 :deep(.van-search__content):focus-within {
-  box-shadow: 0 0 8px rgba(67, 102, 214, 0.3);
+  box-shadow: 0 0 8px rgba(0, 150, 5, 0.25);
   border-color: rgb(0, 150, 5);
 }
 
 .van-icon {
   flex-shrink: 0;
-  margin-left: -10px;
+  margin-left: 0;
   cursor: pointer;
 }
 
 .search {
   flex: 1 0 85%;
+  --van-search-background: var(--bg);
+  --van-search-input-background: var(--card-bg);
+  --van-search-content-background: var(--card-bg);
+  --van-search-left-icon-color: var(--text);
+  --van-search-input-text-color: var(--text);
+  --van-search-placeholder-color: var(--text);
+  --van-field-input-text-color: var(--text);
+  --van-field-placeholder-color: var(--text);
 }
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-right: 12px;
+  margin-right: 12px;
+}
+
+.theme-toggle {
+  position: relative;
+  width: 24px;
+  height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  margin-left: 6px;
+  margin-right: 4px;
+  cursor: pointer;
+}
+.theme-toggle .icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+  position: relative;
+  z-index: 2;
+}
+.theme-toggle .icon.sun {
+  background: radial-gradient(circle, #fffbe6 0%, #ffe58f 100%);
+}
+.theme-toggle .icon.moon {
+  background: radial-gradient(circle, #263144 0%, #17202b 100%);
+  color: #fff;
+}
+.theme-toggle .thumb {
+  position: absolute;
+  left: 2px;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #000;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  transition: transform 0.15s ease;
+  z-index: 1;
+}
+.theme-toggle[data-mode='dark'] .thumb {
+  background: linear-gradient(135deg, #4a4a4a 0%, #1f1f1f 100%);
+}
+.theme-toggle[data-mode='light'] .icon.sun { box-shadow: 0 0 0 2px rgba(0, 150, 5, 0.3); }
+.theme-toggle[data-mode='dark'] .icon.moon { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25); }
 
 /* 下拉框样式 - 气泡效果 */
 .dropdown {
@@ -1001,7 +1093,7 @@ watch(searchvalue, (newVal) => {
   top: 80px;
   left: 50px;
   right: 10px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 999;
@@ -1021,7 +1113,7 @@ watch(searchvalue, (newVal) => {
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-bottom: 8px solid white;
+  border-bottom: 8px solid var(--card-bg);
   filter: drop-shadow(0 -2px 4px rgba(0, 0, 0, 0.1));
 }
 
@@ -1118,7 +1210,7 @@ watch(searchvalue, (newVal) => {
 .dropdown .section-title {
   padding: 8px 16px;
   margin: 0;
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: var(--card-bg);
   font-size: 12px;
   color: #666;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
@@ -1133,8 +1225,8 @@ watch(searchvalue, (newVal) => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #000;
-  color: white;
+  /* background: #000; */
+  /* color: white; */
   position: relative;
   overflow: hidden;
 }

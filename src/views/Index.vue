@@ -20,7 +20,7 @@
     <div class="food-classification commonstyle">
       <div class="classification-header">
         <div class="header-left">
-          <van-icon name="apps-o" color="#2c3e50" size="20" />
+          <van-icon name="apps-o"  size="20" />
           <span class="classification-title">食品分类</span>
         </div>
         <div v-if="store.shouldShowMoreButton" class="toggle-button" @click="store.toggleCategoriesExpansion">
@@ -28,7 +28,7 @@
             {{ store.showAllCategories ? '收起' : '更多' }}
           </span>
           <van-icon :name="store.showAllCategories ? 'arrow-up' : 'arrow-down'"
-            :class="['toggle-icon', { 'rotated': store.showAllCategories }]" size="14" color="#666" />
+            :class="['toggle-icon', { 'rotated': store.showAllCategories }]" size="14" />
         </div>
       </div>
 
@@ -68,10 +68,35 @@
       </div>
 
       <div class="recently-list">
-        <van-cell-group :border="false" v-if="store.recentlyAdded.length > 0">
-          <van-cell v-for="item in store.recentlyAdded" :key="item.id"
+        <van-cell-group
+          :border="false"
+          v-if="store.recentlyAdded.length > 0"
+          :style="{
+            '--van-background-2': 'transparent',
+            '--van-cell-group-background-color': 'transparent',
+            '--van-cell-background-color': 'transparent',
+            '--van-cell-active-background-color': 'transparent',
+            '--van-text-color': 'var(--text)',
+            '--van-cell-text-color': 'var(--text)',
+            background: 'transparent'
+          }"
+        >
+          <van-cell
+            v-for="item in store.recentlyAdded"
+            :key="item.id"
             @click="() => handleRecentItemClick(item, router)" clickable
-            :class="['recent-item', { 'taken-out': item.isTakenOut }]">
+            :class="['recent-item', { 'taken-out': item.isTakenOut }]"
+            :style="{
+              background: 'transparent',
+              '--van-cell-background-color': 'transparent',
+              '--van-cell-active-background-color': 'transparent',
+              '--van-text-color': 'var(--text)',
+              '--van-cell-text-color': 'var(--text)'
+            }"
+          >
+            
+            
+            
             <template #icon>
               <van-image :src="item.image" width="50" height="50" fit="cover" round class="item-image" />
             </template>
@@ -269,7 +294,7 @@ onUnmounted(() => {
 // 页面根元素
 .index-page {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  // background-color: #f5f5f5;
   padding-bottom: 20px;
 }
 
@@ -277,7 +302,7 @@ onUnmounted(() => {
 .commonstyle {
   width: 90%;
   margin: 20px auto;
-  background-color: white;
+  // background-color: white;
   border-radius: 15px;
   padding: 15px;
 }
@@ -358,7 +383,7 @@ onUnmounted(() => {
       .classification-title {
         font-size: 16px;
         font-weight: 600;
-        color: #2c3e50;
+        // color: #2c3e50;
       }
     }
 
@@ -368,16 +393,16 @@ onUnmounted(() => {
       gap: 4px;
       padding: 6px 12px;
       border-radius: 20px;
-      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      // background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
       border: 1px solid #dee2e6;
       cursor: pointer;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       user-select: none;
 
       &:hover {
-        background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+        // background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(94, 255, 61, 0.71);
       }
 
       &:active {
@@ -387,7 +412,7 @@ onUnmounted(() => {
 
       .toggle-text {
         font-size: 13px;
-        color: #666;
+        // color: #666;
         font-weight: 500;
       }
 
@@ -450,7 +475,7 @@ onUnmounted(() => {
       align-items: center;
       padding: 16px 8px;
       border-radius: 16px;
-      background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+      // background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
       border: 1px solid #e9ecef;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
       cursor: pointer;
@@ -537,7 +562,7 @@ onUnmounted(() => {
 
       .category-text {
         font-size: 14px;
-        color: #333;
+        color: var(--text);
         font-weight: 500;
         transition: all 0.3s ease;
         text-align: center;
@@ -756,13 +781,13 @@ onUnmounted(() => {
         margin-left: 8px;
         font-size: 17px;
         font-weight: 600;
-        color: #2c3e50;
+        // color: #2c3e50;
       }
 
       .recently-subtitle {
         margin-left: 4px;
         font-size: 12px;
-        color: #999;
+        color: #8c8b8b;
         font-weight: 400;
       }
     }
@@ -772,7 +797,15 @@ onUnmounted(() => {
     margin-bottom: 16px;
 
     :deep(.van-cell-group) {
-      background: transparent;
+      background: transparent !important;
+      background-color: transparent !important;
+      --van-cell-group-background-color: transparent;
+      --van-background-2: transparent;
+    }
+
+    :deep(.van-cell-group__inner) {
+      background: transparent !important;
+      background-color: transparent !important;
     }
 
     .empty-state {
@@ -791,7 +824,10 @@ onUnmounted(() => {
 
     .recent-item {
       :deep(.van-cell) {
-        background: transparent;
+        background: transparent !important;
+        background-color: transparent !important;
+        --van-cell-background-color: transparent;
+        --van-cell-active-background-color: transparent;
         padding: 12px 0;
         border-bottom: 1px solid #f5f5f5;
 
@@ -800,24 +836,29 @@ onUnmounted(() => {
         }
 
         &:hover {
-          background: #f8f9fa;
+          background: transparent !important;
           border-radius: 8px;
         }
 
         &:active {
-          background: #e9ecef;
+          background: transparent !important;
         }
+      }
+
+      :deep(.van-cell__title) {
+        color: var(--text) !important;
       }
 
       // 已取出食材的样式
       &.taken-out {
         :deep(.van-cell) {
-          background: linear-gradient(135deg, #f6ffed 0%, #f0f9ff 100%);
+          background: transparent !important;
+          background-color: transparent !important;
           border-left: 3px solid #52c41a;
           opacity: 0.8;
 
           &:hover {
-            background: linear-gradient(135deg, #e6f7ff 0%, #d6f3ff 100%);
+            background: transparent !important;
             opacity: 1;
           }
         }
@@ -850,7 +891,7 @@ onUnmounted(() => {
       .item-name {
         font-size: 16px;
         font-weight: 600;
-        color: #2c3e50;
+        color: inherit;
         margin-bottom: 4px;
         display: flex;
         align-items: center;
@@ -891,14 +932,35 @@ onUnmounted(() => {
   cursor: pointer;
   border-radius: 8px;
   transition: all 0.3s ease;
+  border: 1px solid rgb(0, 150, 5);
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    padding: 2px;
+    background: conic-gradient(from 0deg, transparent 0deg 345deg, rgb(0, 150, 5) 345deg 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+    transform: rotate(0deg);
+    opacity: 0;
+  }
 
   &:hover {
-    background: #f8f9fa;
     transform: translateY(-1px);
+    &::after {
+      opacity: 1;
+      animation: view-all-border-rotate 1s linear infinite;
+    }
   }
 
   &:active {
-    background: #e9ecef;
+    // background: #e9ecef;
     transform: translateY(0);
   }
 
@@ -911,5 +973,9 @@ onUnmounted(() => {
   .van-icon {
     transition: transform 0.3s ease;
   }
+}
+
+@keyframes view-all-border-rotate {
+  to { transform: rotate(360deg); }
 }
 </style>

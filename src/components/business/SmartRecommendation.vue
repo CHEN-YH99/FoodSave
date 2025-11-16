@@ -11,7 +11,6 @@
       </div>
       <van-button 
         size="mini" 
-        type="primary" 
         plain
         color="rgb(0, 150, 5)"
         @click="refreshRecommendations"
@@ -240,13 +239,22 @@ onMounted(() => {
     .title {
       font-size: 15px;
       font-weight: 600;
-      color: #323233;
+      // color: #323233;
     }
   }
   
   .refresh-btn {
     padding: 4px 8px;
     height: 24px;
+    background: transparent !important;
+    border-color: rgb(0, 150, 5) !important;
+    color: rgb(0, 150, 5) !important;
+    transition: background 0.2s ease, color 0.2s ease;
+    
+    &:hover {
+      background: rgb(0, 150, 5) !important;
+      color: #fff !important;
+    }
     
     :deep(.van-button__text) {
       font-size: 11px;
@@ -261,7 +269,7 @@ onMounted(() => {
   
   .empty-text {
     margin: 8px 0 0;
-    color: #969799;
+    // color: #969799;
     font-size: 13px;
   }
 }

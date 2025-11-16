@@ -653,7 +653,7 @@ onUnmounted(() => {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: white;
+  background: var(--card-bg);
   border-bottom: 1px solid #ebedf0;
 
   .header-content {
@@ -703,7 +703,7 @@ onUnmounted(() => {
 
 .category-info {
   margin: 20px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -730,13 +730,13 @@ onUnmounted(() => {
         margin: 0 0 8px 0;
         font-size: 20px;
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--text);
       }
 
       .category-description {
         margin: 0;
         font-size: 14px;
-        color: #7f8c8d;
+        color: var(--muted);
         line-height: 1.4;
       }
     }
@@ -745,7 +745,7 @@ onUnmounted(() => {
 
 .food-list {
   margin: 0 20px 20px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -761,12 +761,12 @@ onUnmounted(() => {
       margin: 0;
       font-size: 16px;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--text);
     }
 
     .count {
       font-size: 14px;
-      color: #7f8c8d;
+      color: var(--muted);
     }
   }
 
@@ -785,7 +785,7 @@ onUnmounted(() => {
         padding: 16px 20px;
         cursor: pointer;
         transition: background-color 0.2s;
-        background: white;
+        background: var(--card-bg);
 
         &:hover {
           background-color: #f8f9fa;
@@ -807,7 +807,7 @@ onUnmounted(() => {
           .food-name {
             font-size: 16px;
             font-weight: 500;
-            color: #2c3e50;
+            color: var(--text);
             margin-bottom: 4px;
             display: flex;
             align-items: center;
@@ -824,7 +824,7 @@ onUnmounted(() => {
             font-size: 13px;
 
             .storage {
-              color: #7f8c8d;
+              color: var(--muted);
             }
 
             .expire-date {
@@ -954,7 +954,7 @@ onUnmounted(() => {
 // 已取出列表样式
 .taken-out-section {
   margin: 0 20px 20px;
-  background: white;
+  background: var(--card-bg);
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -983,7 +983,7 @@ onUnmounted(() => {
       .taken-out-title {
         font-size: 16px;
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--text);
       }
     }
 
@@ -1018,7 +1018,7 @@ onUnmounted(() => {
       margin: 0;
       font-size: 18px;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--text);
     }
 
     .header-actions {
@@ -1093,13 +1093,13 @@ onUnmounted(() => {
         .taken-item-name {
           font-size: 16px;
           font-weight: 500;
-          color: #2c3e50;
+          color: var(--text);
           margin-bottom: 4px;
         }
 
         .taken-item-time {
           font-size: 12px;
-          color: #7f8c8d;
+          color: var(--muted);
         }
       }
 
@@ -1127,7 +1127,7 @@ onUnmounted(() => {
   margin: 20px;
 
   .loading-section {
-    background: white;
+    background: var(--card-bg);
     border-radius: 12px;
     padding: 60px 20px;
     text-align: center;
@@ -1139,7 +1139,7 @@ onUnmounted(() => {
   }
 
   .food-image-section {
-    background: white;
+    background: var(--card-bg);
     border-radius: 12px;
     padding: 30px;
     text-align: center;
@@ -1153,7 +1153,7 @@ onUnmounted(() => {
   }
 
   .food-info-section {
-    background: white;
+    background: var(--card-bg);
     border-radius: 12px;
     padding: 20px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -1162,7 +1162,7 @@ onUnmounted(() => {
       margin: 0 0 20px 0;
       font-size: 24px;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--text);
       text-align: center;
     }
 
@@ -1180,13 +1180,13 @@ onUnmounted(() => {
 
         .label {
           font-size: 14px;
-          color: #7f8c8d;
+          color: var(--muted);
           font-weight: 500;
         }
 
         .value {
           font-size: 14px;
-          color: #2c3e50;
+          color: var(--text);
           font-weight: 600;
           text-align: right;
           flex: 1;
@@ -1232,7 +1232,7 @@ onUnmounted(() => {
 
   0%,
   100% {
-    background: white;
+    background: var(--card-bg);
     transform: scale(1);
   }
 
